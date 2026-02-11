@@ -1,0 +1,104 @@
+
+
+
+
+**Hệ thống đồng bộ dữ liệu đa dự án và giám sát thông minh**
+
+## 1. BỐI CẢNH & MỤC TIÊU
+
+Công ty vận hành trên nền tảng Google Workspace, quản lý dữ liệu từ đối tác qua Google Drive.
+
+- **Nguồn (Source):** Folder đối tác share link.
+- **Đích (Destination):** Folder nội bộ công ty.
+- **Mục tiêu:** Tự động hóa việc copy file mới dựa trên thời gian cập nhật, quản lý tập trung qua UI và thông báo qua Google Chat.
+
+## 2. CHI TIẾT TECH STACK
+
+### 2.1. Frontend (Management UI)
+
+- **Framework:** React.js (phiên bản mới nhất)
+- **UI Library:** [shadcn/ui](https://ui.shadcn.com/ "null") (Dựa trên Radix UI và Tailwind CSS cho các thành phần accessible, tái sử dụng cao).
+- **Styling:** Tailwind CSS (đảm bảo Mobile Responsive & Dark mode ready).
+- **Icons:** Lucide React.
+- **Charts:** Recharts (vẽ biểu đồ hiệu suất phiên chạy và dung lượng).
+- **State Management:** React Hooks (UseContext hoặc UseReducer cho global settings).
+- **Communication:** `google.script.run` (để gọi hàm server-side từ UI).
+
+### 2.2. Backend & Engine (Execution Layer)
+
+- **Runtime:** Google Apps Script (GAS).
+- **Drive API:** Advanced Drive Service v3 (hiệu suất cao hơn DriveApp mặc định).
+- **Auth:** OAuth2 (tận dụng quyền của user đang vận hành Web App).
+
+### 2.3. Database & Storage (Persistence Layer)
+
+- **Database:** Firebase Firestore.
+    - **Cấu hình:** Lưu trữ tại `/artifacts/{appId}/public/data/`.
+    - **Đặc điểm:** NoSQL, hỗ trợ Real-time listeners, hiệu năng truy vấn cao.
+
+## 3. TIÊU CHUẨN KIẾN TRÚC (CLEAN ARCHITECTURE)
+
+Yêu cầu mã nguồn phải tuân thủ việc tách biệt các lớp (Separation of Concerns):
+
+### 3.1. Đối với Google Apps Script (Server-side)
+
+Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ chức theo module:
+
+- **Repository Layer:** Chuyên trách giao tiếp với Firestore (CRUD cho Projects, Settings, Sessions).
+- **Service Layer (Core Logic):** Chứa thuật toán Sync, xử lý đệ quy, logic kiểm tra thời gian (Cutoff) và xử lý lỗi.
+- **API/Controller Layer:** Các hàm `doGet()` và các hàm public được gọi từ UI qua `google.script.run`.
+- **Infrastructure Layer:** Các hàm tiện ích gửi Webhook Google Chat, xử lý Drive API.
+
+### 3.2. Đối với React (Client-side)
+
+- **Component-based:** Tách biệt UI thành các component nhỏ (ProjectCard, SettingForm, LogTable) sử dụng hệ thống shadcn/ui.
+- **Service Pattern:** Tách các lệnh gọi `google.script.run` vào các file service riêng, không viết trực tiếp trong Component.
+
+## 4. CƠ CHẾ VẬN HÀNH & THUẬT TOÁN
+
+### 4.1. Thuật toán Time-Snapshot Sync
+
+- Sử dụng Query: `(modifiedTime > last_sync_timestamp OR createdTime > last_sync_timestamp) AND 'source_id' in parents`.
+- **Recursive Scan:** Duyệt từng tầng thư mục. Nếu thư mục con có file thay đổi, hệ thống tạo thư mục tương ứng tại Đích trước khi copy.
+
+### 4.2. Quản lý Hàng đợi & Timeout
+
+- **Queue:** Sắp xếp dự án theo `last_sync_timestamp` ASC.
+- **Cutoff logic:** Kiểm tra thời gian sau mỗi lần xử lý 1 file. Nếu `currentTime - startTime > sync_cutoff_seconds`, thực hiện ngắt an toàn (Safe Exit).
+
+## 5. HỆ THỐNG LOGGING CHI TIẾT (FIRESTORE)
+
+### 5.1. Sync Session (Parent)
+
+- `id`, `project_id`, `run_id`, `timestamp`, `execution_duration_seconds`, `status` (Success/Interrupted/Error), `files_count`.
+
+### 5.2. File Log (Child)
+
+- `file_name`, `source_link`, `dest_link`, `source_path`, `created_date`, `modified_date`.
+
+## 6. CÁC YÊU CẦU KỸ THUẬT KHÁC (TECHNICAL REQUIREMENTS)
+
+### 6.1. Độ tin cậy (Resilience)
+
+- **Error Handling:** Sử dụng `try-catch` bọc ngoài mỗi dự án. Lỗi của một dự án không được làm chết toàn bộ tiến trình chạy của các dự án khác trong hàng đợi.
+- **Retry Logic:** Áp dụng cho các lệnh gọi Drive API nếu gặp lỗi 429 (Too many requests).
+
+### 6.2. Hiệu năng (Performance)
+
+- **Batching:** Hạn chế ghi vào Firestore từng dòng một. Gom log file vào mảng và ghi theo Batch sau khi hoàn thành mỗi dự án.
+- **Query Optimization:** Chỉ lấy các trường (fields) cần thiết từ Drive API để giảm payload (ví dụ: `id, name, mimeType, modifiedTime`).
+
+### 6.3. Bảo mật (Security)
+
+- **Principle of Least Privilege:** Script chỉ yêu cầu các Scope cần thiết (`drive.file`, `forms`, `script.external_request`).
+- **Data Validation:** UI phải validate định dạng Link/ID folder trước khi lưu xuống Database.
+
+### 6.4. Khả năng bảo trì (Maintainability)
+
+- **Code Style:** Đặt tên biến/hàm theo kiểu camelCase, có comment giải thích cho các logic phức tạp.
+- **Documentation:** Luôn cập nhật SSoT (Single Source of Truth) này khi có thay đổi về logic.
+
+## 7. BÁO CÁO & THÔNG BÁO
+
+- **Webhook Integration:** Gửi thông báo JSON tới Google Chat Webhook.
+- **Executive Dashboard:** Tích hợp trực tiếp vào UI React, lấy dữ liệu từ Firestore để vẽ biểu đồ thống kê.
