@@ -59,5 +59,5 @@ var CONFIG = {
   FOLDER_MIME_TYPE: 'application/vnd.google-apps.folder',
   MAX_RETRIES: 3,
   DEFAULT_CUTOFF_SECONDS: 300,
-  BATCH_SIZE: 50,
+  BATCH_SIZE: 450,
 };

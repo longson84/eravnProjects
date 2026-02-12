@@ -35,6 +35,9 @@ Công ty vận hành trên nền tảng Google Workspace, quản lý dữ liệu
 - **Database:** Firebase Firestore.
     - **Cấu hình:** Lưu trữ tại `/artifacts/{appId}/public/data/`.
     - **Đặc điểm:** NoSQL, hỗ trợ Real-time listeners, hiệu năng truy vấn cao.
+- **Cache & Heartbeat:** Google Apps Script `PropertiesService`.
+    - **Mục tiêu:** Lưu trữ trạng thái "Heartbeat" (tình trạng sức khỏe) của hệ thống mà không tiêu tốn quota ghi của Firestore.
+    - **Dữ liệu:** Lưu mốc thời gian cuối cùng hệ thống thực hiện kiểm tra (Check-in) cho từng dự án.
 
 ## 3. TIÊU CHUẨN KIẾN TRÚC (CLEAN ARCHITECTURE)
 
@@ -66,11 +69,14 @@ Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ c
 - **Queue:** Sắp xếp dự án theo `last_sync_timestamp` ASC.
 - **Cutoff logic:** Kiểm tra thời gian sau mỗi lần xử lý 1 file. Nếu `currentTime - startTime > sync_cutoff_seconds`, thực hiện ngắt an toàn (Safe Exit).
 
-## 5. HỆ THỐNG LOGGING CHI TIẾT (FIRESTORE)
+#### 5.1. Sync Session (Firestore - Meaningful Events)
 
-### 5.1. Sync Session (Parent)
+- Lưu vết khi có sự thay đổi thực tế: `id`, `project_id`, `run_id`, `timestamp`, `execution_duration_seconds`, `status` (Success/Interrupted/Error), `files_count`.
 
-- `id`, `project_id`, `run_id`, `timestamp`, `execution_duration_seconds`, `status` (Success/Interrupted/Error), `files_count`.
+#### 5.2. Heartbeat (PropertiesService - Health Check)
+
+- Lưu vết mọi lần chạy kể cả không có file: `last_check_timestamp`, `last_status`.
+- **Mục đích:** Đảm bảo UI hiển thị trạng thái "Vừa kiểm tra" mà không tốn Quota Write Firestore.
 
 ### 5.2. File Log (Child)
 
@@ -81,12 +87,16 @@ Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ c
 ### 6.1. Độ tin cậy (Resilience)
 
 - **Error Handling:** Sử dụng `try-catch` bọc ngoài mỗi dự án. Lỗi của một dự án không được làm chết toàn bộ tiến trình chạy của các dự án khác trong hàng đợi.
-- **Retry Logic:** Áp dụng cho các lệnh gọi Drive API nếu gặp lỗi 429 (Too many requests).
+- **Retry Logic:** 
+    - Áp dụng cho các lệnh gọi Drive API nếu gặp lỗi 429 (Too many requests).
+    - Áp dụng `exponentialBackoff` cho `firestoreRequest_` để xử lý giới hạn băng thông và lỗi tạm thời của Firebase REST API.
 
 ### 6.2. Hiệu năng (Performance)
 
-- **Batching:** Hạn chế ghi vào Firestore từng dòng một. Gom log file vào mảng và ghi theo Batch sau khi hoàn thành mỗi dự án.
+- **Batching:** Hạn chế ghi vào Firestore từng dòng một. Gom log file vào mảng và ghi theo Batch sau khi hoàn thành mỗi dự án. 
+    - **Tối ưu:** Sử dụng `BATCH_SIZE` lên đến 450-500 items/request để tối ưu hóa quota `UrlFetchApp`.
 - **Query Optimization:** Chỉ lấy các trường (fields) cần thiết từ Drive API để giảm payload (ví dụ: `id, name, mimeType, modifiedTime`).
+- **REST API Correction:** Đảm bảo các lệnh `:runQuery` và `:batchWrite` sử dụng phương thức `POST` theo chuẩn Firestore REST API.
 
 ### 6.3. Bảo mật (Security)
 

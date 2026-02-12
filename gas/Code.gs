@@ -95,3 +95,11 @@ function getSessionsByProject(projectId) {
 function getFileLogs(sessionId) {
   return getFileLogsBySession(sessionId);
 }
+
+// ==========================================
+// Heartbeat API
+// ==========================================
+
+function getProjectHeartbeats() {
+  return getAllProjectHeartbeats();
+}

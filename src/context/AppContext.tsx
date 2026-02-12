@@ -19,7 +19,7 @@ const initialState: AppState = {
         firebaseProjectId: '',
         enableNotifications: false,
         maxRetries: 3,
-        batchSize: 50,
+        batchSize: 450,
     },
     isLoading: true,
     error: null,

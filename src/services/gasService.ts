@@ -4,7 +4,7 @@
 // Wraps google.script.run calls in Promises.
 // Falls back to mock data in local development.
 
-import type { Project, SyncSession, FileLog, AppSettings } from '@/types/types';
+import type { Project, SyncSession, FileLog, AppSettings, ProjectHeartbeat } from '@/types/types';
 import {
     mockProjects,
     mockSyncSessions,
@@ -51,6 +51,11 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
         getSyncSessions: () => mockSyncSessions,
         getSessionsByProject: () => mockSyncSessions.filter(s => s.projectId === args[0]),
         getFileLogs: () => mockFileLogs.filter(f => f.sessionId === args[0]),
+        getProjectHeartbeats: () => mockProjects.map(p => ({
+            projectId: p.id,
+            lastCheckTimestamp: new Date().toISOString(),
+            lastStatus: p.lastSyncStatus || 'success',
+        })),
     };
 
     const handler = handlers[functionName];
@@ -86,4 +91,7 @@ export const gasService = {
     getSyncSessions: (limit?: number) => gasRun<SyncSession[]>('getSyncSessions', limit),
     getSessionsByProject: (projectId: string) => gasRun<SyncSession[]>('getSessionsByProject', projectId),
     getFileLogs: (sessionId: string) => gasRun<FileLog[]>('getFileLogs', sessionId),
+
+    // Heartbeat
+    getProjectHeartbeats: () => gasRun<ProjectHeartbeat[]>('getProjectHeartbeats'),
 };

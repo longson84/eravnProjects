@@ -19,23 +19,34 @@ function getFirestoreUrl() {
  */
 function firestoreRequest_(method, path, payload) {
   var url = getFirestoreUrl() + path;
-  var options = {
-    method: method,
-    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
-    contentType: 'application/json',
-    muteHttpExceptions: true,
-  };
-  if (payload) options.payload = JSON.stringify(payload);
+  var maxRetries = CONFIG.MAX_RETRIES;
 
-  var response = UrlFetchApp.fetch(url, options);
-  var code = response.getResponseCode();
+  for (var attempt = 0; attempt <= maxRetries; attempt++) {
+    var options = {
+      method: method,
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      contentType: 'application/json',
+      muteHttpExceptions: true,
+    };
+    if (payload) options.payload = JSON.stringify(payload);
 
-  if (code >= 400) {
-    Logger.log('Firestore error [' + code + ']: ' + response.getContentText());
-    throw new Error('Firestore request failed with code ' + code);
+    var response = UrlFetchApp.fetch(url, options);
+    var code = response.getResponseCode();
+
+    if (code < 400) {
+      return JSON.parse(response.getContentText());
+    }
+
+    // Retry on transient errors: 429 (Rate Limit), 500, 503
+    var isRetryable = (code === 429 || code === 500 || code === 503);
+    if (isRetryable && attempt < maxRetries) {
+      Logger.log('Firestore [' + code + '] retry ' + (attempt + 1) + '/' + maxRetries + ' for ' + path);
+      exponentialBackoff(attempt);
+    } else {
+      Logger.log('Firestore error [' + code + ']: ' + response.getContentText());
+      throw new Error('Firestore request failed with code ' + code);
+    }
   }
-
-  return JSON.parse(response.getContentText());
 }
 
 // ==========================================
@@ -89,7 +100,7 @@ function saveSyncSession(session) {
 }
 
 function getSyncSessionsByProject(projectId) {
-  var result = firestoreRequest_('GET',
+  var result = firestoreRequest_('POST',
     ':runQuery',
     { structuredQuery: { from: [{ collectionId: 'syncSessions' }], where: { fieldFilter: { field: { fieldPath: 'projectId' }, op: 'EQUAL', value: { stringValue: projectId } } }, orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }], limit: 50 } }
   );
@@ -98,7 +109,7 @@ function getSyncSessionsByProject(projectId) {
 
 function getRecentSyncSessions(limit) {
   limit = limit || 20;
-  var result = firestoreRequest_('GET',
+  var result = firestoreRequest_('POST',
     ':runQuery',
     { structuredQuery: { from: [{ collectionId: 'syncSessions' }], orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }], limit: limit } }
   );
@@ -333,4 +344,53 @@ function getSettingsFromCache_() {
     settingsCache_ = getDefaultSettings_();
   }
   return settingsCache_;
+}
+
+// ==========================================
+// Heartbeat (PropertiesService - Quota-Free)
+// ==========================================
+
+/**
+ * Save heartbeat for a project (no Firestore quota consumed)
+ * @param {string} projectId
+ * @param {string} status - 'success' | 'interrupted' | 'error'
+ */
+function saveProjectHeartbeat_(projectId, status) {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var heartbeat = {
+      lastCheckTimestamp: getCurrentTimestamp(),
+      lastStatus: status,
+    };
+    props.setProperty('HB_' + projectId, JSON.stringify(heartbeat));
+  } catch (e) {
+    Logger.log('Heartbeat save failed for ' + projectId + ': ' + e.message);
+  }
+}
+
+/**
+ * Get all project heartbeats from PropertiesService
+ * @returns {Array} Array of { projectId, lastCheckTimestamp, lastStatus }
+ */
+function getAllProjectHeartbeats() {
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var allProps = props.getProperties();
+    var heartbeats = [];
+    for (var key in allProps) {
+      if (key.indexOf('HB_') === 0) {
+        var projectId = key.substring(3);
+        var data = JSON.parse(allProps[key]);
+        heartbeats.push({
+          projectId: projectId,
+          lastCheckTimestamp: data.lastCheckTimestamp,
+          lastStatus: data.lastStatus,
+        });
+      }
+    }
+    return heartbeats;
+  } catch (e) {
+    Logger.log('Heartbeat read failed: ' + e.message);
+    return [];
+  }
 }

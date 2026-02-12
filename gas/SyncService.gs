@@ -1,5 +1,5 @@
 // ==========================================
-// eravnProjects - Sync Service (Core Logic Layer)
+// eravnProject n - Sync Service (Core Logic Layer)
 // ==========================================
 // Time-Snapshot Sync algorithm with recursive scan and queue management
 
@@ -156,8 +156,13 @@ function syncSingleProject_(project, runId, settings) {
   // Calculate duration
   session.executionDurationSeconds = Math.round((new Date().getTime() - startTime) / 1000);
 
-  // Save session to Firestore
-  saveSyncSession(session);
+  // Save session to Firestore ONLY when meaningful (has files, error, or interrupted)
+  if (session.filesCount > 0 || session.status !== 'success') {
+    saveSyncSession(session);
+  }
+
+  // Always save heartbeat to PropertiesService (free, no quota cost)
+  saveProjectHeartbeat_(project.id, session.status);
 
   // Batch save file logs
   if (fileLogsBatch.length > 0) {
