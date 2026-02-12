@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:gas": "npm run build && cp dist/index.html gas/index.html",
+    "deploy:gas": "npm run build:gas && clasp push",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -47,6 +49,7 @@
     "globals": "^16.5.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
-    "vite": "^7.3.1"
+    "vite": "^7.3.1",
+    "vite-plugin-singlefile": "^2.3.0"
   }
 }
