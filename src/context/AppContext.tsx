@@ -14,7 +14,7 @@ const initialState: AppState = {
     // change this in order to not use mock data
     settings: {
         syncCutoffSeconds: 300,
-        defaultScheduleCron: '0 */6 * * * *',
+        defaultScheduleCron: '0 */6 * * *',
         webhookUrl: '',
         firebaseProjectId: '',
         enableNotifications: false,
