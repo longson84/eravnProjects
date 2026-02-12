@@ -7,9 +7,11 @@
  * Get Firestore base URL for the configured project
  */
 function getFirestoreUrl() {
+  
   var settings = getSettingsFromCache_();
   var projectId = settings.firebaseProjectId || CONFIG.FIRESTORE_PROJECT_ID;
   return CONFIG.FIRESTORE_BASE_URL + projectId + '/databases/(default)/documents/';
+
 }
 
 /**
@@ -140,18 +142,39 @@ function getFileLogsBySession(sessionId) {
 // ==========================================
 
 function getSettingsFromDb() {
+  // This is the old version, getting Settings from Firestore
+  // try {
+  //   var result = firestoreRequest_('GET', 'settings/global');
+  //   return docToSettings_(result);
+  // } catch (e) {
+  //   return getDefaultSettings_();
+  // }
+
+  // This is the new version, getting Settings from PropertyService
   try {
-    var result = firestoreRequest_('GET', 'settings/global');
-    return docToSettings_(result);
+    var props = PropertiesService.getScriptProperties();
+    var saved = props.getProperty('APP_SETTINGS');
+    if (saved) return JSON.parse(saved);
+    return getDefaultSettings_();
   } catch (e) {
     return getDefaultSettings_();
   }
 }
 
 function saveSettingsToDb(settings) {
-  var doc = settingsToDoc_(settings);
-  firestoreRequest_('PATCH', 'settings/global', doc);
-  return settings;
+  // old version, saving to firestore
+  // var doc = settingsToDoc_(settings);
+  // firestoreRequest_('PATCH', 'settings/global', doc);
+  // return settings;
+
+  // This is the new version, saving Settings to PropertyService
+  try {
+    var props = PropertiesService.getScriptProperties();
+    props.setProperty('APP_SETTINGS', JSON.stringify(settings));
+    return settings;
+  } catch (e) {
+    return getDefaultSettings_();
+  }
 }
 
 // ==========================================

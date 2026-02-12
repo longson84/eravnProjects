@@ -5,11 +5,22 @@
 import { createContext, useContext, useReducer, useEffect, type ReactNode } from 'react';
 import type { AppState, AppAction, AppSettings, Project } from '@/types/types';
 import { gasService } from '@/services/gasService';
-import { mockSettings } from '@/data/mockData';
+// we are not using mock data anymore
+// import { mockSettings } from '@/data/mockData'; 
 
 const initialState: AppState = {
     projects: [],
-    settings: mockSettings,
+    // settings: mockSettings,
+    // change this in order to not use mock data
+    settings: {
+        syncCutoffSeconds: 300,
+        defaultScheduleCron: '0 */6 * * * *',
+        webhookUrl: '',
+        firebaseProjectId: '',
+        enableNotifications: false,
+        maxRetries: 3,
+        batchSize: 50,
+    },
     isLoading: true,
     error: null,
     theme: (typeof window !== 'undefined' && localStorage.getItem('theme') as AppState['theme']) || 'dark',
