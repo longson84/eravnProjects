@@ -112,3 +112,35 @@ Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ c
 
 - **Webhook Integration:** Gửi thông báo JSON tới Google Chat Webhook.
 - **Executive Dashboard:** Tích hợp trực tiếp vào UI React, lấy dữ liệu từ Firestore để vẽ biểu đồ thống kê.
+- 
+## 8. DASHBOARD
+
+Dashboard mang lại một overview để kiểm soát quá trình.
+
+Để đảm bảo tính scaling, cần thiết kế để dashboard được lắp ghép từ nhiều component tính toán, thống kê. Trong phần này sẽ liệt kê ra một số component quan trọng đầu tiên. Trong tương lai, chúng ta có thể bổ sung
+
+### Tổng số dự án
+
+Card này thể hiện tổng số dự án, và bao nhiêu dự án đang bật sync
+
+### Tiến độ sync
+
+Card này thể hiện
+- Số file và dung lượng được sync hôm nay
+- Số file và dung lượng được sync trong 7 ngày qua
+- Số dự án được sync trong hôm nay
+- Số dự án được sync trong  7 ngày qua
+- Tổng thời lượng sync hôm nay
+- Tổng thời lượng sync trong  7 ngày qua
+- Số phiên sync hôm nay
+- Số phiên sync trong  7 ngày qua
+
+
+### Biểu đồ sync
+
+Card này vẽ một cái biểu đồ line, thể hiện timeline trong 10 ngày vừa qua, biểu diễn mỗi ngày sync bao nhiêu file và bao nhiêu thời gian
+### Dự án sync gần đây
+
+ Card này thể hiện từng dòng, mỗi dòng là một dự án được đồng bộ gần đây, với tên dự án, thời gian, và status thành công hay thất bại hay lỗi. 
+
+Lưu ý rằng, một phiên đồng bộ có thể sync nhiều dự án. Chúng ta biểu diễn một dự án một dòng.
