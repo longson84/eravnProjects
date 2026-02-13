@@ -100,6 +100,68 @@ function getSyncSessionsByProject(projectId) {
   return result.filter(function(r) { return r.document; }).map(function(r) { return docToSession_(r.document); });
 }
 
+function getSyncSessionById(sessionId) {
+  var result = firestoreRequest_('GET', 'syncSessions/' + sessionId);
+  return docToSession_(result);
+}
+
+function updateSyncSession(sessionId, updates) {
+  // Partial update
+  var fields = {};
+  if (updates.hasOwnProperty('retried')) fields.retried = { booleanValue: updates.retried };
+  if (updates.hasOwnProperty('status')) fields.status = { stringValue: updates.status };
+  // Add more fields as needed
+
+  var doc = { fields: fields };
+  // Use mask to ensure partial update behavior if needed, 
+  // but PATCH in Firestore REST API usually merges if fields are specified.
+  // To be safe and explicit with what we are updating:
+  var updateMask = Object.keys(fields).map(function(k) { return 'updateMask.fieldPaths=' + k; }).join('&');
+  
+  var path = 'syncSessions/' + sessionId;
+  if (updateMask) {
+    path += '?' + updateMask;
+  }
+  
+  firestoreRequest_('PATCH', path, doc);
+  return true;
+}
+
+/**
+ * Get sync sessions with flexible filtering options
+ * @param {Object} options { startDate: Date, limit: number }
+ */
+function getSyncSessions(options) {
+  options = options || {};
+  var limit = options.limit || 100;
+  
+  var query = {
+    from: [{ collectionId: 'syncSessions' }],
+    orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }],
+    limit: limit
+  };
+
+  // Add date filter if provided
+  if (options.startDate) {
+    query.where = {
+      fieldFilter: {
+        field: { fieldPath: 'timestamp' },
+        op: 'GREATER_THAN_OR_EQUAL',
+        value: { stringValue: options.startDate.toISOString() }
+      }
+    };
+  }
+
+  var result = firestoreRequest_('POST', ':runQuery', { structuredQuery: query });
+  
+  // Handle empty results or errors gracefully
+  if (!result || !Array.isArray(result)) return [];
+  
+  return result
+    .filter(function(r) { return r.document; })
+    .map(function(r) { return docToSession_(r.document); });
+}
+
 function getRecentSyncSessions(limit) {
   limit = limit || 20;
   var result = firestoreRequest_('POST',
@@ -195,6 +257,7 @@ function docToProject_(doc) {
     sourceFolderLink: fv_(f.sourceFolderLink),
     destFolderId: fv_(f.destFolderId),
     destFolderLink: fv_(f.destFolderLink),
+    syncStartDate: fv_(f.syncStartDate), // Add this field
     status: fv_(f.status) || 'active',
     lastSyncTimestamp: fv_(f.lastSyncTimestamp) || null,
     lastSyncStatus: fv_(f.lastSyncStatus) || null,
@@ -213,6 +276,7 @@ function projectToDoc_(p) {
     sourceFolderLink: { stringValue: p.sourceFolderLink },
     destFolderId: { stringValue: p.destFolderId },
     destFolderLink: { stringValue: p.destFolderLink },
+    syncStartDate: p.syncStartDate ? { stringValue: p.syncStartDate } : { nullValue: null }, // Add this field
     status: { stringValue: p.status },
     lastSyncTimestamp: p.lastSyncTimestamp ? { stringValue: p.lastSyncTimestamp } : { nullValue: null },
     lastSyncStatus: p.lastSyncStatus ? { stringValue: p.lastSyncStatus } : { nullValue: null },
@@ -236,6 +300,9 @@ function docToSession_(doc) {
     filesCount: Number(fv_(f.filesCount)) || 0,
     totalSizeSynced: Number(fv_(f.totalSizeSynced)) || 0, // Add new field
     errorMessage: fv_(f.errorMessage) || undefined,
+    retried: fv_(f.retried) === true || fv_(f.retried) === 'true',
+    retryOf: fv_(f.retryOf) || null,
+    triggeredBy: fv_(f.triggeredBy) || 'manual'
   };
 }
 
@@ -248,7 +315,10 @@ function sessionToDoc_(s) {
     executionDurationSeconds: { integerValue: String(s.executionDurationSeconds) },
     status: { stringValue: s.status },
     filesCount: { integerValue: String(s.filesCount) },
+    retried: { booleanValue: !!s.retried },
+    triggeredBy: { stringValue: s.triggeredBy || 'manual' }
   };
+  if (s.retryOf) fields.retryOf = { stringValue: s.retryOf };
   if (s.errorMessage) fields.errorMessage = { stringValue: s.errorMessage };
   return { fields: fields };
 }
