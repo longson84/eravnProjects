@@ -145,3 +145,45 @@ Card này vẽ một cái biểu đồ line, thể hiện timeline trong 10 ngà
  Card này thể hiện từng dòng, mỗi dòng là một dự án được đồng bộ gần đây, với tên dự án, thời gian, và status thành công hay thất bại hay lỗi. 
 
 Lưu ý rằng, một phiên đồng bộ có thể sync nhiều dự án. Chúng ta biểu diễn một dự án một dòng.
+
+## 9. Sync Logs
+
+Chi tiêt [Sync Log](./synclog_trae.md)
+
+
+Giao diện này thể hiện danh sách các dự án được sync.
+
+Lưu ý rằng, một sync session sẽ có thể cover nhiều dự án. Nhưng khi thể hiện, chúng ta thể hiện theo các dự án
+Chúng ta sắp xếp theo thời gian chạy, cái gần nhất để trên cùng
+
+Ở thanh ngang đầu tiên chúng ta cho phép tìm kiếm nhanh theo tên dự án hoặc runid
+Item thứ hai là theo trạng thái (như hiện tại đang implement)
+Phần thứ ba là một dãy các ô chọn 1 ngày, 3 ngày, 7 ngày, 10 ngày, tất cả (để thể hiện những session chạy trong khoảng thời gian 1, 3, 7, 10 ngày gần nhất hoặc tất cả). mặc định là 1 ngày, và mặc định là chỉ load cái 1 ngày. User sẽ có thể chọn cái khác
+
+Mỗi lnaf thay đổi các filter này, các số thống kê ở trên (số phiên, số lượng file đã sync, tổng dung lượng đã sync, thời gian tủng bình phải được cập nhật tương ứng)
+
+Bảng log sẽ gồm 2 phần (như hiện tại đang implement): phần trên là theo các dự án, phần dưới là chi tiết, khi bấm vào một dự án sẽ thể hiện chi tiết log của dự án đó trong session đó
+
+
+- Tên dự án
+- Run ID - đây chính là sync session
+- Thời gian chạy
+- Số file mới được copy
+- Dung lượng được copy
+- Tổng thời gian
+- Trạng thái
+- Button Retry (nếu như trạng thái là Lỗi)
+
+Khi chúng ta bấm vào mỗi dự án, ở bảng bên dưới sẽ thể hiện chi tiết từng file được sync của dự án đó, trong session đó với các thông tin sau
+- Tên file
+- Dung lượng
+- Folder gốc
+- Trạng thái
+
+Ở mỗi phần mà trạng thái bị lỗi, Button Retry sẽ active, khi user bấm vào đây, hệ thống sẽ tiến hành sync lại, với duy nhất dự án này. 
+
+Khi sync xong, session mới sẽ được tạo mới như một session độc lập chứ không ghi đè vào session cũ, nghĩa là session cũ vẫn phải ở trạng thái Lỗi để lưu lại lịch sử.
+
+Session mới có thể vẫn là một trạng thái Lỗi, hoặc là trạng thái thành công.
+
+Tuy nhiên, button retry chỉ active cho phép đúng 1 lần. Nghĩa là nếu một session bị lỗi ở dự án đó, chúng ta được retry một lần, nếu vẫn lỗi thì lỗi ở session vừa chạy mới được tạo mới, nếu chúng ta muốn retry, phải retry từ session mới, không được retry ở session cũ nữa

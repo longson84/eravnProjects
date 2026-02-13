@@ -4,7 +4,7 @@
 // Wraps google.script.run calls in Promises.
 // Falls back to mock data in local development.
 
-import type { Project, SyncSession, FileLog, AppSettings, ProjectHeartbeat, DashboardData } from '@/types/types';
+import type { Project, SyncSession, FileLog, AppSettings, ProjectHeartbeat, DashboardData, SyncLogEntry } from '@/types/types';
 import {
     mockProjects,
     mockSyncSessions,
@@ -48,9 +48,67 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
         runSyncProject: () => ({ success: true, message: `Sync started for project ${args[0]}` }),
         getSettings: () => mockSettings,
         updateSettings: () => ({ ...mockSettings, ...args[0] }),
-        getSyncSessions: () => mockSyncSessions.slice(0, args[0]),
-        getSessionsByProject: () => mockSyncSessions.filter(s => s.projectId === args[0]),
-        getFileLogs: () => mockFileLogs.filter(f => f.sessionId === args[0]),
+        
+        // Logs Mocks
+        getSyncLogs: () => {
+            const filters = args[0] || { days: 1, status: 'all', search: '' };
+            let filtered = [...mockSyncSessions];
+            
+            // Filter by days
+            if (filters.days !== -1) {
+                const now = new Date();
+                const cutoff = new Date(now.setDate(now.getDate() - filters.days));
+                filtered = filtered.filter(s => new Date(s.timestamp) >= cutoff);
+            }
+
+            // Filter by status
+            if (filters.status && filters.status !== 'all') {
+                filtered = filtered.filter(s => s.status === filters.status);
+            }
+
+            // Filter by search
+            if (filters.search) {
+                const term = filters.search.toLowerCase();
+                filtered = filtered.filter(s => 
+                    s.projectName.toLowerCase().includes(term) || 
+                    s.runId.toLowerCase().includes(term)
+                );
+            }
+
+            // Flatten to SyncLogEntry
+            return filtered.map(s => ({
+                sessionId: s.id,
+                projectId: s.projectId,
+                projectName: s.projectName,
+                runId: s.runId,
+                startTime: s.timestamp,
+                endTime: s.timestamp, // Mock
+                duration: s.executionDurationSeconds,
+                status: s.status,
+                filesCount: s.filesCount,
+                totalSize: s.totalSizeSynced,
+                error: s.errorMessage,
+                retried: s.retried,
+                retryOf: s.retryOf,
+                triggeredBy: 'manual'
+            } as SyncLogEntry));
+        },
+        getSyncLogDetails: () => {
+            const [sessionId] = args;
+            return mockFileLogs.filter(f => f.sessionId === sessionId);
+        },
+        retrySync: () => {
+            const [sessionId] = args;
+            const session = mockSyncSessions.find(s => s.id === sessionId);
+            if (session) {
+                session.retried = true;
+                const newSession = { ...session, id: `sess-${Date.now()}`, runId: `run-${Date.now()}`, timestamp: new Date().toISOString(), status: 'success' as const, retried: false, retryOf: sessionId, errorMessage: undefined };
+                mockSyncSessions.unshift(newSession);
+                return true;
+            }
+            return false;
+        },
+
         getProjectHeartbeats: () => mockProjects.map(p => ({
             projectId: p.id,
             lastCheckTimestamp: new Date().toISOString(),
@@ -106,9 +164,9 @@ export const gasService = {
     updateSettings: (settings: Partial<AppSettings>) => gasRun<AppSettings>('updateSettings', settings),
 
     // Logs
-    getSyncSessions: (limit?: number) => gasRun<SyncSession[]>('getSyncSessions', limit),
-    getSessionsByProject: (projectId: string) => gasRun<SyncSession[]>('getSessionsByProject', projectId),
-    getFileLogs: (sessionId: string) => gasRun<FileLog[]>('getFileLogs', sessionId),
+    getSyncLogs: (filters: { days: number; status?: string; search?: string }) => gasRun<SyncLogEntry[]>('getSyncLogs', filters),
+    getSyncLogDetails: (sessionId: string, projectId: string) => gasRun<FileLog[]>('getSyncLogDetails', sessionId, projectId),
+    retrySync: (sessionId: string, projectId: string) => gasRun<boolean>('retrySync', sessionId, projectId),
 
     // Heartbeat
     getProjectHeartbeats: () => gasRun<ProjectHeartbeat[]>('getProjectHeartbeats'),

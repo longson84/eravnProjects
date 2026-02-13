@@ -32,6 +32,33 @@ export interface SyncSession {
     filesCount: number;
     totalSizeSynced: number; // Size of files synced in this session
     errorMessage?: string;
+    retryOf?: string;        // ID of the original session if this is a retry
+    retried?: boolean;       // Whether this session has been retried
+}
+
+/** Flattened log entry for UI display (Project-centric) */
+export interface SyncLogEntry {
+    sessionId: string;
+    projectId: string;
+    projectName: string;
+    runId: string;
+    startTime: string;
+    endTime: string;
+    duration: number;
+    status: 'success' | 'interrupted' | 'error';
+    filesCount: number;
+    totalSize: number;
+    error?: string;
+    retried?: boolean;
+    retryOf?: string;
+    triggeredBy?: 'manual' | 'scheduled' | 'retry' | 'webhook';
+}
+
+/** Filter criteria for fetching sync logs */
+export interface SyncLogFilters {
+    days: number;
+    status: string;
+    search: string;
 }
 
 /** Heartbeat status from PropertiesService (quota-free health check) */
