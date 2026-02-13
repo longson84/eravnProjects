@@ -7,10 +7,10 @@ import type {
     SyncSession,
     FileLog,
     AppSettings,
-    DashboardStats,
-    SyncChartData,
-    StorageChartData,
-    ActivityEvent,
+    // DashboardData,
+    // SyncChartData,
+    // StorageChart,
+    // ActivityEvent,
 } from '@/types/types';
 
 export const mockProjects: Project[] = [
@@ -26,6 +26,7 @@ export const mockProjects: Project[] = [
         lastSyncTimestamp: '2026-02-11T08:30:00Z',
         lastSyncStatus: 'success',
         filesCount: 247,
+        totalSize: 1234567890, // 1.23GB
         createdAt: '2025-11-15T10:00:00Z',
         updatedAt: '2026-02-11T08:30:00Z',
     },
@@ -41,6 +42,7 @@ export const mockProjects: Project[] = [
         lastSyncTimestamp: '2026-02-11T07:45:00Z',
         lastSyncStatus: 'success',
         filesCount: 183,
+        totalSize: 987654321, // 987.65MB
         createdAt: '2025-12-01T09:00:00Z',
         updatedAt: '2026-02-11T07:45:00Z',
     },
@@ -56,6 +58,7 @@ export const mockProjects: Project[] = [
         lastSyncTimestamp: '2026-02-10T22:15:00Z',
         lastSyncStatus: 'error',
         filesCount: 89,
+        totalSize: 456789012, // 456.79MB
         createdAt: '2026-01-10T14:30:00Z',
         updatedAt: '2026-02-10T22:15:00Z',
     },
@@ -71,6 +74,7 @@ export const mockProjects: Project[] = [
         lastSyncTimestamp: '2026-02-08T16:00:00Z',
         lastSyncStatus: 'success',
         filesCount: 56,
+        totalSize: 234567890, // 234.57MB
         createdAt: '2026-01-20T11:00:00Z',
         updatedAt: '2026-02-08T16:00:00Z',
     },
@@ -86,6 +90,7 @@ export const mockProjects: Project[] = [
         lastSyncTimestamp: '2026-02-11T06:20:00Z',
         lastSyncStatus: 'success',
         filesCount: 312,
+        totalSize: 123456789, // 123.46MB
         createdAt: '2025-10-05T08:00:00Z',
         updatedAt: '2026-02-11T06:20:00Z',
     },
@@ -101,6 +106,7 @@ export const mockSyncSessions: SyncSession[] = [
         executionDurationSeconds: 45,
         status: 'success',
         filesCount: 12,
+        totalSizeSynced: 123456789, // 123.46MB
     },
     {
         id: 'sess-002',
@@ -111,6 +117,7 @@ export const mockSyncSessions: SyncSession[] = [
         executionDurationSeconds: 38,
         status: 'success',
         filesCount: 8,
+        totalSizeSynced: 89012345, // 89.01MB
     },
     {
         id: 'sess-003',
@@ -120,7 +127,8 @@ export const mockSyncSessions: SyncSession[] = [
         timestamp: '2026-02-10T22:15:00Z',
         executionDurationSeconds: 120,
         status: 'error',
-        filesCount: 3,
+        filesCount: 3,  
+        totalSizeSynced: 34567890, // 34.57MB
         errorMessage: 'Drive API quota exceeded (429). Retry sau 60 giây không thành công.',
     },
     {
@@ -132,6 +140,7 @@ export const mockSyncSessions: SyncSession[] = [
         executionDurationSeconds: 85,
         status: 'success',
         filesCount: 24,
+        totalSizeSynced: 24567890, // 24.57MB
     },
     {
         id: 'sess-005',
@@ -142,6 +151,7 @@ export const mockSyncSessions: SyncSession[] = [
         executionDurationSeconds: 200,
         status: 'interrupted',
         filesCount: 15,
+        totalSizeSynced: 156789012, // 156.79MB
         errorMessage: 'Cutoff timeout: đã vượt quá 300 giây. Safe exit.',
     },
     {
@@ -152,7 +162,8 @@ export const mockSyncSessions: SyncSession[] = [
         timestamp: '2026-02-10T13:30:00Z',
         executionDurationSeconds: 52,
         status: 'success',
-        filesCount: 6,
+        filesCount: 6,  
+        totalSizeSynced: 6789012, // 6.79MB
     },
     {
         id: 'sess-007',
@@ -163,6 +174,7 @@ export const mockSyncSessions: SyncSession[] = [
         executionDurationSeconds: 67,
         status: 'success',
         filesCount: 18,
+        totalSizeSynced: 189012345, // 189.01MB
     },
     {
         id: 'sess-008',
@@ -173,6 +185,7 @@ export const mockSyncSessions: SyncSession[] = [
         executionDurationSeconds: 94,
         status: 'success',
         filesCount: 21,
+        totalSizeSynced: 219012345, // 219.01MB
     },
 ];
 
@@ -244,76 +257,76 @@ export const mockSettings: AppSettings = {
     batchSize: 50,
 };
 
-export const mockDashboardStats: DashboardStats = {
-    totalProjects: 5,
-    activeProjects: 3,
-    filesSyncedToday: 44,
-    filesSyncedThisWeek: 187,
-    totalSyncSessions: 142,
-    successRate: 91.5,
-    avgDurationSeconds: 72,
-    errorCount: 3,
-};
+// export const mockDashboardStats: DashboardStats = {
+//     totalProjects: 5,
+//     activeProjects: 3,
+//     filesSyncedToday: 44,
+//     filesSyncedThisWeek: 187,
+//     totalSyncSessions: 142,
+//     successRate: 91.5,
+//     avgDurationSeconds: 72,
+//     errorCount: 3,
+// };
 
-export const mockSyncChartData: SyncChartData[] = [
-    { date: '2026-02-05', filesCount: 35, duration: 180, errors: 0 },
-    { date: '2026-02-06', filesCount: 48, duration: 220, errors: 1 },
-    { date: '2026-02-07', filesCount: 22, duration: 95, errors: 0 },
-    { date: '2026-02-08', filesCount: 56, duration: 310, errors: 0 },
-    { date: '2026-02-09', filesCount: 39, duration: 161, errors: 2 },
-    { date: '2026-02-10', filesCount: 24, duration: 372, errors: 1 },
-    { date: '2026-02-11', filesCount: 44, duration: 168, errors: 1 },
-];
+// export const mockSyncChartData: SyncChartData[] = [
+//     { date: '2026-02-05', filesCount: 35, duration: 180, errors: 0 },
+//     { date: '2026-02-06', filesCount: 48, duration: 220, errors: 1 },
+//     { date: '2026-02-07', filesCount: 22, duration: 95, errors: 0 },
+//     { date: '2026-02-08', filesCount: 56, duration: 310, errors: 0 },
+//     { date: '2026-02-09', filesCount: 39, duration: 161, errors: 2 },
+//     { date: '2026-02-10', filesCount: 24, duration: 372, errors: 1 },
+//     { date: '2026-02-11', filesCount: 44, duration: 168, errors: 1 },
+// ];
 
-export const mockStorageChartData: StorageChartData[] = [
-    { projectName: 'Vinhomes GP', filesCount: 247, totalSize: 1200 },
-    { projectName: 'Masteri CP', filesCount: 183, totalSize: 890 },
-    { projectName: 'Global City', filesCount: 89, totalSize: 450 },
-    { projectName: 'Eaton Park', filesCount: 56, totalSize: 320 },
-    { projectName: 'King Crown', filesCount: 312, totalSize: 1580 },
-];
+// export const mockStorageChartData: StorageChartData[] = [
+//     { projectName: 'Vinhomes GP', filesCount: 247, totalSize: 1200 },
+//     { projectName: 'Masteri CP', filesCount: 183, totalSize: 890 },
+//     { projectName: 'Global City', filesCount: 89, totalSize: 450 },
+//     { projectName: 'Eaton Park', filesCount: 56, totalSize: 320 },
+//     { projectName: 'King Crown', filesCount: 312, totalSize: 1580 },
+// ];
 
-export const mockActivityEvents: ActivityEvent[] = [
-    {
-        id: 'act-001',
-        type: 'sync_complete',
-        message: 'Đồng bộ thành công 12 files',
-        timestamp: '2026-02-11T08:30:00Z',
-        projectName: 'Dự án Vinhomes Grand Park',
-    },
-    {
-        id: 'act-002',
-        type: 'sync_complete',
-        message: 'Đồng bộ thành công 8 files',
-        timestamp: '2026-02-11T07:45:00Z',
-        projectName: 'Dự án Masteri Centre Point',
-    },
-    {
-        id: 'act-003',
-        type: 'sync_error',
-        message: 'Lỗi Drive API quota - 3 files đã sync trước khi dừng',
-        timestamp: '2026-02-10T22:15:00Z',
-        projectName: 'Dự án The Global City',
-        details: 'Drive API quota exceeded (429)',
-    },
-    {
-        id: 'act-004',
-        type: 'sync_complete',
-        message: 'Đồng bộ thành công 24 files',
-        timestamp: '2026-02-11T06:20:00Z',
-        projectName: 'Dự án King Crown Infinity',
-    },
-    {
-        id: 'act-005',
-        type: 'project_updated',
-        message: 'Đã tạm dừng dự án',
-        timestamp: '2026-02-08T16:30:00Z',
-        projectName: 'Dự án Eaton Park',
-    },
-    {
-        id: 'act-006',
-        type: 'settings_changed',
-        message: 'Cập nhật sync cutoff thành 300 giây',
-        timestamp: '2026-02-07T10:00:00Z',
-    },
-];
+// export const mockActivityEvents: ActivityEvent[] = [
+//     {
+//         id: 'act-001',
+//         type: 'sync_complete',
+//         message: 'Đồng bộ thành công 12 files',
+//         timestamp: '2026-02-11T08:30:00Z',
+//         projectName: 'Dự án Vinhomes Grand Park',
+//     },
+//     {
+//         id: 'act-002',
+//         type: 'sync_complete',
+//         message: 'Đồng bộ thành công 8 files',
+//         timestamp: '2026-02-11T07:45:00Z',
+//         projectName: 'Dự án Masteri Centre Point',
+//     },
+//     {
+//         id: 'act-003',
+//         type: 'sync_error',
+//         message: 'Lỗi Drive API quota - 3 files đã sync trước khi dừng',
+//         timestamp: '2026-02-10T22:15:00Z',
+//         projectName: 'Dự án The Global City',
+//         details: 'Drive API quota exceeded (429)',
+//     },
+//     {
+//         id: 'act-004',
+//         type: 'sync_complete',
+//         message: 'Đồng bộ thành công 24 files',
+//         timestamp: '2026-02-11T06:20:00Z',
+//         projectName: 'Dự án King Crown Infinity',
+//     },
+//     {
+//         id: 'act-005',
+//         type: 'project_updated',
+//         message: 'Đã tạm dừng dự án',
+//         timestamp: '2026-02-08T16:30:00Z',
+//         projectName: 'Dự án Eaton Park',
+//     },
+//     {
+//         id: 'act-006',
+//         type: 'settings_changed',
+//         message: 'Cập nhật sync cutoff thành 300 giây',
+//         timestamp: '2026-02-07T10:00:00Z',
+//     },
+// ];

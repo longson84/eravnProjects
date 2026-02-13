@@ -62,54 +62,35 @@ function getDashboardSyncProgress_() {
     .filter(r => r.document)
     .map(r => docToSession_(r.document));
 
-    const initialStats = {
-      files: 0,
-      size: 0,
-      projects: new Set(),
-      duration: 0,
-      sessions: 0,
-    };
-
-    const todayStats = JSON.parse(JSON.stringify(initialStats));
-    const last7DaysStats = JSON.parse(JSON.stringify(initialStats));
+    const todayStats = { files: 0, size: 0, duration: 0, sessions: 0 };
+    const last7DaysStats = { files: 0, size: 0, duration: 0, sessions: 0 };
 
     recentSessions.forEach(session => {
+      const sessionSize = session.totalSizeSynced || 0;
+      const sessionDuration = session.executionDurationSeconds || 0;
+
       // Aggregate for last 7 days
       last7DaysStats.files += session.filesCount;
-      last7DaysStats.size += session.totalSizeSynced;
-      last7DaysStats.projects.add(session.projectId);
-      last7DaysStats.duration += session.executionDurationSeconds;
+      last7DaysStats.size += sessionSize;
+      last7DaysStats.duration += sessionDuration;
       last7DaysStats.sessions++;
 
       // Aggregate for today
       if (session.timestamp >= todayStart) {
         todayStats.files += session.filesCount;
-        todayStats.size += session.totalSizeSynced;
-        todayStats.projects.add(session.projectId);
-        todayStats.duration += session.executionDurationSeconds;
+        todayStats.size += sessionSize;
+        todayStats.duration += sessionDuration;
         todayStats.sessions++;
       }
     });
 
     return {
-      today: {
-        files: todayStats.files,
-        size: todayStats.size,
-        projects: todayStats.projects.size,
-        duration: todayStats.duration,
-        sessions: todayStats.sessions,
-      },
-      last7Days: {
-        files: last7DaysStats.files,
-        size: last7DaysStats.size,
-        projects: last7DaysStats.projects.size,
-        duration: last7DaysStats.duration,
-        sessions: last7DaysStats.sessions,
-      },
+      today: todayStats,
+      last7Days: last7DaysStats,
     };
   } catch (e) {
     Logger.log('Error in getDashboardSyncProgress: ' + e.message);
-    const emptyStats = { files: 0, size: 0, projects: 0, duration: 0, sessions: 0 };
+    const emptyStats = { files: 0, size: 0, duration: 0, sessions: 0 };
     return { today: emptyStats, last7Days: emptyStats };
   }
 }

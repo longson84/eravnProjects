@@ -1,65 +1,74 @@
-# Dashboard Feature Implementation Overview
+# Quá trình triển khai Dashboard
 
-This document outlines the process of implementing the new Dashboard feature, from backend enhancements to frontend integration.
+Tài liệu này mô tả các bước đã thực hiện để triển khai tính năng Dashboard, thay thế dữ liệu giả lập (mock data) bằng dữ liệu thật từ backend Google Apps Script (GAS).
 
-## 1. Requirement Analysis
+## 1. Phân tích yêu cầu & Thảo luận Concept
 
-The goal was to replace the mock data in the existing dashboard with real, aggregated data from the backend. The dashboard was designed to display four key metrics:
+- **Yêu cầu ban đầu**: Xây dựng 4 thành phần chính cho Dashboard:
+    1.  **Total Projects**: Thống kê tổng số dự án và số dự án đang hoạt động.
+    2.  **Sync Progress**: Thống kê số lượng files, dung lượng, và số phiên đồng bộ trong ngày và trong 7 ngày gần nhất.
+    3.  **Sync Chart**: Biểu đồ thể hiện hiệu suất đồng bộ (số files và thời gian xử lý) trong 10 ngày gần nhất.
+    4.  **Recent Sync Projects**: Danh sách các phiên đồng bộ gần đây nhất.
+- **Concept đã thống nhất**:
+    - **Backend**: Tạo một service riêng (`DashboardService.gs`) trên GAS để tổng hợp và tính toán sẵn dữ liệu, giảm tải cho frontend.
+    - **Frontend**: Sử dụng React Query (`@tanstack/react-query`) để lấy dữ liệu, quản lý trạng thái loading/error và tự động cập nhật dữ liệu.
+    - **Cấu trúc dữ liệu**: Bổ sung các trường `totalSize` (cho Project) và `totalSizeSynced` (cho SyncSession) để theo dõi dung lượng dữ liệu.
 
-1.  **Project Summary**: Total number of projects and the number of currently active projects.
-2.  **Sync Progress**: Statistics for today and the last 7 days, including the number of files synced, total data size, and number of sync sessions.
-3.  **Sync Performance Chart**: A visual representation of sync activity over the last 10 days, showing the number of files synced and the total duration.
-4.  **Recent Sync Sessions**: A list of the most recent sync activities with their status.
+## 2. Nâng cấp Backend (Google Apps Script)
 
-## 2. Backend Enhancements (Step 1)
+### a. Bổ sung trường dữ liệu
 
-To support the new dashboard, several changes were made to the Google Apps Script backend.
+- **`gas/FirestoreRepository.gs`**:
+    - Cập nhật các hàm `docToProject_`, `projectToDoc_`, `docToSession_`, `sessionToDoc_` để bao gồm các trường `totalSize` và `totalSizeSynced`.
+    - Trong hàm `createProjectInDb`, khởi tạo `totalSize` với giá trị `0`.
+- **`gas/SyncService.gs`**:
+    - Trong hàm `syncSingleProject_`, tính toán và ghi nhận `totalSizeSynced` cho mỗi phiên.
+    - Cập nhật `project.totalSize` sau mỗi lần đồng bộ thành công.
+    - Thêm các hàm `createProject`, `updateProject` để xử lý `Partial<Project>` từ frontend, đảm bảo dữ liệu luôn hợp lệ trước khi lưu vào DB.
 
-### 2.1. Data Model Extension
+### b. Tạo `DashboardService.gs`
 
-The `Project` and `SyncSession` data models were extended to track data volume:
+- Tạo file mới `gas/DashboardService.gs` để chứa logic tổng hợp dữ liệu cho Dashboard.
+- Implement 4 hàm private tương ứng với 4 thành phần của Dashboard:
+    - `getDashboardProjectSummary_()`
+    - `getDashboardSyncProgress_()`
+    - `getDashboardSyncChart_()`
+    - `getDashboardRecentSyncs_()`
+- Tạo một hàm public `getDashboardData()` để gom tất cả dữ liệu lại và trả về cho frontend trong một lần gọi duy nhất, giúp tối ưu hiệu suất.
 
--   In the `projects` collection, a `totalSize` field was added to store the cumulative size of all files synced for that project.
--   In the `syncSessions` collection, a `totalSizeSynced` field was added to record the data volume of each individual sync session.
+## 3. Chuẩn hóa cấu trúc dữ liệu (Types)
 
-These changes were implemented in `gas/FirestoreRepository.gs`.
+- **`src/types/types.ts`**:
+    - **Hợp nhất các kiểu**: Loại bỏ các kiểu dữ liệu cũ, không còn sử dụng (`DashboardStats`, `StorageChartData`) và định nghĩa một cấu trúc chuẩn, duy nhất cho Dashboard:
+        - `SyncProgressStats`: Dùng chung cho thống kê "hôm nay" và "7 ngày".
+        - `SyncChartData`: Dữ liệu cho biểu đồ.
+        - `DashboardData`: Kiểu dữ liệu gốc, bao gồm tất cả dữ liệu cho trang Dashboard.
+    - **Cập nhật Interface**: Thêm `totalSize` vào `Project` và `totalSizeSynced` vào `SyncSession`.
 
-### 2.2. Sync Logic Update
+## 4. Cài đặt Dependencies & Cấu hình Frontend
 
-The `SyncService.gs` was updated to calculate and store the new data points. During each sync operation, the service now:
-1.  Calculates the size of the synced files.
-2.  Stores this size in the `totalSizeSynced` field of the current `SyncSession` document.
-3.  Updates the `totalSize` in the corresponding `Project` document.
+- **Cài đặt thư viện**:
+    - `npm install @tanstack/react-query`: Thêm thư viện React Query để quản lý việc lấy dữ liệu.
+- **Thêm UI Components**:
+    - Do dự án chưa được cấu hình `shadcn`, đã tiến hành:
+        1.  Tạo file `components.json`.
+        2.  Chạy lệnh `npx shadcn@latest add` để thêm các component cần thiết: `alert`, `skeleton`, `card`, `badge`.
+- **Cập nhật Services**:
+    - **`src/services/gasService.ts`**: Cập nhật lại dữ liệu mock cho hàm `getDashboardData` để khớp với cấu trúc `DashboardData` mới, đảm bảo môi trường dev local hoạt động chính xác.
 
-### 2.3. Dedicated Dashboard Service
+## 5. Tích hợp Frontend (`DashboardPage.tsx`)
 
-A new service, `gas/DashboardService.gs`, was created to handle all data aggregation for the dashboard. This approach separates the concerns of the sync logic from the data presentation logic, improving maintainability. This service exposes a single global function `getDashboardData()`, which is called by the frontend. This function gathers and formats all the necessary data by calling four private helper functions:
+- **Thay thế Mock Data**:
+    - Sử dụng hook `useQuery` từ React Query để gọi `gasService.getDashboardData`.
+    - Thiết lập `staleTime` và `refetchInterval` để dữ liệu được cache và tự động làm mới sau mỗi 5 phút.
+- **Xử lý trạng thái**:
+    - Thêm component `DashboardSkeleton` để hiển thị khi dữ liệu đang được tải (`isLoading`).
+    - Thêm component `Alert` để hiển thị thông báo lỗi chi tiết khi có vấn đề xảy ra (`isError`).
+    - Hiển thị thông báo "Không có dữ liệu" khi API trả về rỗng.
+- **Hiển thị dữ liệu**:
+    - Cập nhật các `StatCard` để hiển thị dữ liệu từ `data.projectSummary` và `data.syncProgress`.
+    - Sử dụng các hàm tiện ích `formatBytes` và `formatDuration` để định dạng lại dữ liệu cho dễ đọc.
+    - Cấu hình `AreaChart` (từ `recharts`) để vẽ biểu đồ hiệu suất từ `data.syncChart`.
+    - Hiển thị danh sách các phiên đồng bộ gần đây từ `data.recentSyncs`.
 
--   `getDashboardProjectSummary()`: Aggregates project statistics.
--   `getDashboardSyncProgress()`: Calculates sync statistics for today and the last 7 days.
--   `getDashboardSyncChart()`: Prepares the data for the 10-day performance chart.
--   `getDashboardRecentSyncs()`: Fetches the latest sync session records.
-
-## 3. Frontend Integration (Step 2)
-
-The frontend was updated to consume the new backend service and display the data.
-
-### 3.1. Type Definitions
-
-The `src/types/types.ts` file was updated with new interfaces (`DashboardData`, `SyncProgressStats`, `SyncChartData`) to match the data structure returned by the `getDashboardData` function. The `Project` and `SyncSession` interfaces were also updated to include the new size-related fields.
-
-### 3.2. Data Service Update
-
-The `src/services/gasService.ts` was extended with a `getDashboardData` function, which acts as a bridge to the `getDashboardData` function on the Google Apps Script backend.
-
-### 3.3. Dashboard Component Refactoring
-
-The main part of the frontend work was refactoring the `src/pages/DashboardPage.tsx` component:
-
--   **Data Fetching**: `useState` with mock data was replaced by `useQuery` from `@tanstack/react-query` to fetch live data from `gasService.getDashboardData`. This also provides caching, automatic refetching, and loading/error states.
--   **UI Components**: The UI was built using components from `shadcn/ui` and `recharts`.
--   **Loading and Error States**: The component now displays a skeleton loader while data is being fetched and a detailed error message if the request fails. It also handles the case where no data is available.
--   **Data Formatting**: Helper functions were created to format bytes into a human-readable format (KB, MB, GB) and to format time durations.
--   **Code Quality**: The code was refactored to improve readability and maintainability by adding prop types, organizing imports, and ensuring type safety.
-
-This structured approach, separating backend and frontend concerns and using a dedicated service for data aggregation, has resulted in a robust and maintainable dashboard feature.
+Sau khi hoàn thành các bước trên, trang Dashboard đã hoạt động hoàn chỉnh với dữ liệu thật, có khả năng xử lý các trạng thái tải, lỗi và tự động cập nhật.

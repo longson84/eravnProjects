@@ -60,8 +60,8 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
         getDashboardData: () => ({
             projectSummary: { totalProjects: mockProjects.length, activeProjects: mockProjects.filter(p => p.status === 'active').length },
             syncProgress: {
-                today: { files: 120, size: 12345678, projects: 5, duration: 3600, sessions: 10 },
-                last7Days: { files: 840, size: 86419746, projects: 15, duration: 25200, sessions: 70 },
+                today: { files: 120, size: 12345678, duration: 3600, sessions: 10 },
+                last7Days: { files: 840, size: 86419746, duration: 25200, sessions: 70 },
             },
             syncChart: [
                 { date: '2023-05-20', filesCount: 50, duration: 1800 },
