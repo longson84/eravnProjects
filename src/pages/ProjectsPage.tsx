@@ -419,22 +419,25 @@ export function ProjectsPage() {
                                             <ExternalLink className="w-3 h-3 shrink-0" />
                                         </a>
                                     </div>
+                                    
+                                    {project.syncStartDate && (
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                                            <span className="text-muted-foreground w-10 shrink-0">START</span>
+                                            <div className="flex items-center gap-1 bg-muted/50 px-1.5 py-0.5 rounded">
+                                                <Calendar className="w-3 h-3" />
+                                                <span>{project.syncStartDate}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                                 
-                                {project.syncStartDate && (
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-1.5 rounded">
-                                        <Calendar className="w-3 h-3" />
-                                        <span>Sync từ: {project.syncStartDate}</span>
-                                    </div>
-                                )}
-
                                 <Separator />
 
                                 {/* Stats */}
                                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                                     <div className="flex items-center gap-1">
                                         <FileCheck2 className="w-3.5 h-3.5" />
-                                        <span>{project.filesCount} files</span>
+                                        <span>Đã sync: {project.filesCount} files</span>
                                     </div>
                                     <div className="flex items-center gap-1">
                                         <Clock className="w-3.5 h-3.5" />
@@ -499,8 +502,9 @@ export function ProjectsPage() {
                                 <TableHead className="w-[300px]">Dự án</TableHead>
                                 <TableHead className="w-[120px]">Trạng thái</TableHead>
                                 <TableHead>Source / Destination</TableHead>
+                                <TableHead className="w-[130px]">Start Sync</TableHead>
                                 <TableHead className="w-[150px]">Last Sync</TableHead>
-                                <TableHead className="w-[100px]">Files</TableHead>
+                                <TableHead className="w-[120px]">Files Synced</TableHead>
                                 <TableHead className="w-[100px] text-right">Thao tác</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -509,12 +513,6 @@ export function ProjectsPage() {
                                 <TableRow key={project.id}>
                                     <TableCell>
                                         <div className="font-medium">{project.name}</div>
-                                        {project.syncStartDate && (
-                                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-                                                <Calendar className="w-3 h-3" />
-                                                Từ: {project.syncStartDate}
-                                            </div>
-                                        )}
                                     </TableCell>
                                     <TableCell>{getStatusBadge(project.status)}</TableCell>
                                     <TableCell>
@@ -529,11 +527,21 @@ export function ProjectsPage() {
                                             </a>
                                         </div>
                                     </TableCell>
+                                    <TableCell>
+                                        {project.syncStartDate ? (
+                                            <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                <Calendar className="w-3 h-3" />
+                                                {project.syncStartDate}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">-</span>
+                                        )}
+                                    </TableCell>
                                     <TableCell className="text-xs text-muted-foreground">
                                         {formatDate(project.lastSyncTimestamp)}
                                     </TableCell>
                                     <TableCell className="text-xs">
-                                        {project.filesCount}
+                                        {project.filesCount} files
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
