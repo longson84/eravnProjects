@@ -64,31 +64,23 @@ function getProjectById(projectId) {
   return docToProject_(result);
 }
 
+/**
+ * Create or Update a project (Upsert)
+ * The Service layer is responsible for setting IDs, timestamps, and default values.
+ */
 function saveProject(project) {
+  if (!project.id) throw new Error('Cannot save project without ID');
   var doc = projectToDoc_(project);
   firestoreRequest_('PATCH', 'projects/' + project.id, doc);
   return project;
 }
 
-function createProjectInDb(project) {
-  project.id = project.id || generateId();
-  project.createdAt = getCurrentTimestamp();
-  project.updatedAt = getCurrentTimestamp();
-  project.status = project.status || 'active';
-  project.filesCount = 0;
-  project.totalSize = 0; // Add new field
-  project.lastSyncTimestamp = null;
-  project.lastSyncStatus = null;
-
-  var doc = projectToDoc_(project);
-  firestoreRequest_('PATCH', 'projects/' + project.id, doc);
-  return project;
-}
-
-function deleteProjectFromDb(projectId) {
+function deleteProject(projectId) {
   firestoreRequest_('DELETE', 'projects/' + projectId);
   return { success: true };
 }
+
+
 
 // ==========================================
 // Sync Sessions Collection

@@ -23,7 +23,7 @@ function getDashboardData() {
  */
 function getDashboardProjectSummary_() {
   try {
-    const projects = getAllProjects();
+    const projects = ProjectService.getAllProjects();
     const activeProjects = projects.filter(p => p.status === 'active').length;
     return {
       totalProjects: projects.length,

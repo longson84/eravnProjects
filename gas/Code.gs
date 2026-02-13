@@ -18,42 +18,23 @@ function doGet() {
 // ==========================================
 
 function getProjects() {
-  return getAllProjects();
+  return ProjectService.getAllProjects();
 }
 
 function getProject(projectId) {
-  return getProjectById(projectId);
+  return ProjectService.getProjectById(projectId);
 }
 
 function createProject(projectData) {
-  // Validate required fields
-  if (!projectData.name) throw new Error('Tên dự án là bắt buộc');
-  if (!projectData.sourceFolderId && !projectData.sourceFolderLink) {
-    throw new Error('Source folder là bắt buộc');
-  }
-  if (!projectData.destFolderId && !projectData.destFolderLink) {
-    throw new Error('Destination folder là bắt buộc');
-  }
-
-  // Extract folder IDs from links if needed
-  if (projectData.sourceFolderLink && !projectData.sourceFolderId) {
-    projectData.sourceFolderId = extractFolderIdFromLink(projectData.sourceFolderLink);
-  }
-  if (projectData.destFolderLink && !projectData.destFolderId) {
-    projectData.destFolderId = extractFolderIdFromLink(projectData.destFolderLink);
-  }
-
-  return createProjectInDb(projectData);
+  return ProjectService.createProject(projectData);
 }
 
 function updateProject(projectData) {
-  if (!projectData.id) throw new Error('Project ID là bắt buộc');
-  projectData.updatedAt = getCurrentTimestamp();
-  return saveProject(projectData);
+  return ProjectService.updateProject(projectData);
 }
 
 function deleteProject(projectId) {
-  return deleteProjectFromDb(projectId);
+  return ProjectService.deleteProject(projectId);
 }
 
 // ==========================================

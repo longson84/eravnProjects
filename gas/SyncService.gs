@@ -9,7 +9,7 @@
  */
 function syncAllProjects() {
   var runId = 'run-' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd-HHmmss');
-  var projects = getAllProjects();
+  var projects = ProjectService.getAllProjects();
   var settings = getSettingsFromCache_();
   var results = [];
 
@@ -38,7 +38,7 @@ function syncAllProjects() {
       project.status = 'error';
       project.lastSyncStatus = 'error';
       project.updatedAt = getCurrentTimestamp();
-      saveProject(project);
+      ProjectService.updateProject(project);
     }
   }
 
@@ -54,7 +54,7 @@ function syncAllProjects() {
  * Run sync for a single project
  */
 function syncProjectById(projectId) {
-  var project = getProjectById(projectId);
+  var project = ProjectService.getProjectById(projectId);
   if (!project) throw new Error('Project not found: ' + projectId);
 
   var runId = 'run-' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd-HHmmss');
@@ -187,7 +187,7 @@ function syncSingleProject_(project, runId, settings) {
   if (project.status === 'error' && session.status !== 'error') {
     project.status = 'active';
   }
-  saveProject(project);
+  ProjectService.updateProject(project);
 
   Logger.log('Synced ' + session.filesCount + ' files for ' + project.name + ' in ' + session.executionDurationSeconds + 's [' + session.status + ']');
 
