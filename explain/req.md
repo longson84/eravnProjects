@@ -23,6 +23,7 @@ Công ty vận hành trên nền tảng Google Workspace, quản lý dữ liệu
 - **Charts:** Recharts (vẽ biểu đồ hiệu suất phiên chạy và dung lượng).
 - **State Management:** React Hooks (UseContext hoặc UseReducer cho global settings).
 - **Communication:** `google.script.run` (để gọi hàm server-side từ UI).
+- **View Modes:** Hỗ trợ chuyển đổi linh hoạt giữa dạng lưới (Card Grid) và dạng bảng (Detail List) cho danh sách dự án.
 
 ### 2.2. Backend & Engine (Execution Layer)
 
@@ -60,6 +61,12 @@ Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ c
 ## 4. CƠ CHẾ VẬN HÀNH & THUẬT TOÁN
 
 ### 4.1. Thuật toán Time-Snapshot Sync
+
+- **Cơ chế Sync Start Date (Ngày bắt đầu đồng bộ):**
+    - Mỗi dự án có thêm thuộc tính `syncStartDate`.
+    - Điều kiện lọc file: `(modifiedTime >= MAX(last_sync_timestamp, syncStartDate) OR createdTime >= MAX(last_sync_timestamp, syncStartDate))`.
+    - **Mục đích:** Bỏ qua các file cũ đã tồn tại trước ngày quy định (hữu ích khi folder đích đã được copy thủ công từ trước).
+    - **Mặc định:** Nếu `syncStartDate` không được thiết lập, coi như sync toàn bộ lịch sử.
 
 - Sử dụng Query: `(modifiedTime > last_sync_timestamp OR createdTime > last_sync_timestamp) AND 'source_id' in parents`.
 - **Recursive Scan:** Duyệt từng tầng thư mục. Nếu thư mục con có file thay đổi, hệ thống tạo thư mục tương ứng tại Đích trước khi copy.

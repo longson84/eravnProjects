@@ -29,6 +29,7 @@ export const mockProjects: Project[] = [
         totalSize: 1234567890, // 1.23GB
         createdAt: '2025-11-15T10:00:00Z',
         updatedAt: '2026-02-11T08:30:00Z',
+        syncStartDate: '2023-02-01', // Example: Only sync files from Feb 1st
     },
     {
         id: 'proj-002',

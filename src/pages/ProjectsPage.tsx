@@ -2,7 +2,7 @@
 // Projects Page - Project Management
 // ==========================================
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
     Plus,
     Search,
@@ -19,6 +19,10 @@ import {
     CheckCircle2,
     XCircle,
     Loader2,
+    LayoutGrid,
+    List,
+    Calendar,
+    CalendarDays
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +40,20 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useAppContext } from '@/context/AppContext';
 import { gasService } from '@/services/gasService';
 import type { Project } from '@/types/types';
@@ -46,6 +64,23 @@ export function ProjectsPage() {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [syncingId, setSyncingId] = useState<string | null>(null);
+    
+    // View mode state
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+    // Load view mode from localStorage on mount
+    useEffect(() => {
+        const savedMode = localStorage.getItem('projects_view_mode');
+        if (savedMode === 'grid' || savedMode === 'list') {
+            setViewMode(savedMode);
+        }
+    }, []);
+
+    // Save view mode when changed
+    const handleViewModeChange = (mode: 'grid' | 'list') => {
+        setViewMode(mode);
+        localStorage.setItem('projects_view_mode', mode);
+    };
 
     // Form state
     const [formData, setFormData] = useState({
@@ -53,6 +88,7 @@ export function ProjectsPage() {
         description: '',
         sourceFolderLink: '',
         destFolderLink: '',
+        syncStartDate: new Date().toISOString().split('T')[0], // Default to today YYYY-MM-DD
     });
 
     const filteredProjects = state.projects.filter(
@@ -71,7 +107,13 @@ export function ProjectsPage() {
     };
 
     const resetForm = () => {
-        setFormData({ name: '', description: '', sourceFolderLink: '', destFolderLink: '' });
+        setFormData({ 
+            name: '', 
+            description: '', 
+            sourceFolderLink: '', 
+            destFolderLink: '',
+            syncStartDate: new Date().toISOString().split('T')[0]
+        });
         setEditingProject(null);
     };
 
@@ -86,6 +128,7 @@ export function ProjectsPage() {
             description: project.description,
             sourceFolderLink: project.sourceFolderLink,
             destFolderLink: project.destFolderLink,
+            syncStartDate: project.syncStartDate || '',
         });
         setEditingProject(project);
         setIsCreateOpen(true);
@@ -102,6 +145,7 @@ export function ProjectsPage() {
             sourceFolderId: extractFolderId(formData.sourceFolderLink),
             destFolderLink: formData.destFolderLink,
             destFolderId: extractFolderId(formData.destFolderLink),
+            syncStartDate: formData.syncStartDate || undefined, // undefined if empty string
             status: 'active',
         };
 
@@ -166,91 +210,144 @@ export function ProjectsPage() {
                         Quản lý các cặp thư mục đồng bộ Source → Destination
                     </p>
                 </div>
-                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                    <DialogTrigger asChild>
-                        <Button onClick={handleOpenCreate} className="gap-2">
-                            <Plus className="w-4 h-4" /> Thêm dự án
+                
+                <div className="flex items-center gap-2">
+                    {/* View Mode Toggle */}
+                    <div className="flex items-center bg-muted rounded-md p-1 border">
+                        <Button 
+                            variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => handleViewModeChange('grid')}
+                            title="Dạng lưới"
+                        >
+                            <LayoutGrid className="w-4 h-4" />
                         </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[550px]">
-                        <DialogHeader>
-                            <DialogTitle>
-                                {editingProject ? 'Chỉnh sửa dự án' : 'Thêm dự án mới'}
-                            </DialogTitle>
-                            <DialogDescription>
-                                Cấu hình cặp thư mục Source và Destination cho đồng bộ tự động.
-                            </DialogDescription>
-                        </DialogHeader>
-                        <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Tên dự án *</Label>
-                                <Input
-                                    id="name"
-                                    placeholder="VD: Dự án Vinhomes Grand Park"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="description">Mô tả</Label>
-                                <Textarea
-                                    id="description"
-                                    placeholder="Mô tả ngắn gọn về dự án..."
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                />
-                            </div>
-                            <Separator />
-                            <div className="grid gap-2">
-                                <Label htmlFor="sourceLink">
-                                    Source Folder Link *
-                                    <span className="text-xs text-muted-foreground ml-2">(Link hoặc ID thư mục đối tác)</span>
-                                </Label>
-                                <Input
-                                    id="sourceLink"
-                                    placeholder="https://drive.google.com/drive/folders/..."
-                                    value={formData.sourceFolderLink}
-                                    onChange={(e) => setFormData({ ...formData, sourceFolderLink: e.target.value })}
-                                    className={formData.sourceFolderLink && !validateFolderLink(formData.sourceFolderLink) ? 'border-red-500' : ''}
-                                />
-                                {formData.sourceFolderLink && !validateFolderLink(formData.sourceFolderLink) && (
-                                    <p className="text-xs text-red-500 flex items-center gap-1">
-                                        <AlertCircle className="w-3 h-3" /> Link không hợp lệ
-                                    </p>
-                                )}
-                            </div>
-                            <div className="grid gap-2">
-                                <Label htmlFor="destLink">
-                                    Destination Folder Link *
-                                    <span className="text-xs text-muted-foreground ml-2">(Link thư mục nội bộ)</span>
-                                </Label>
-                                <Input
-                                    id="destLink"
-                                    placeholder="https://drive.google.com/drive/folders/..."
-                                    value={formData.destFolderLink}
-                                    onChange={(e) => setFormData({ ...formData, destFolderLink: e.target.value })}
-                                    className={formData.destFolderLink && !validateFolderLink(formData.destFolderLink) ? 'border-red-500' : ''}
-                                />
-                                {formData.destFolderLink && !validateFolderLink(formData.destFolderLink) && (
-                                    <p className="text-xs text-red-500 flex items-center gap-1">
-                                        <AlertCircle className="w-3 h-3" /> Link không hợp lệ
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
-                                Hủy
+                        <Button 
+                            variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => handleViewModeChange('list')}
+                            title="Dạng danh sách"
+                        >
+                            <List className="w-4 h-4" />
+                        </Button>
+                    </div>
+
+                    <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                        <DialogTrigger asChild>
+                            <Button onClick={handleOpenCreate} className="gap-2">
+                                <Plus className="w-4 h-4" /> Thêm dự án
                             </Button>
-                            <Button
-                                onClick={handleSubmit}
-                                disabled={!formData.name || !formData.sourceFolderLink || !formData.destFolderLink}
-                            >
-                                {editingProject ? 'Cập nhật' : 'Tạo dự án'}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[550px]">
+                            <DialogHeader>
+                                <DialogTitle>
+                                    {editingProject ? 'Chỉnh sửa dự án' : 'Thêm dự án mới'}
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Cấu hình cặp thư mục Source và Destination cho đồng bộ tự động.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="name">Tên dự án *</Label>
+                                    <Input
+                                        id="name"
+                                        placeholder="VD: Dự án Vinhomes Grand Park"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="description">Mô tả</Label>
+                                    <Textarea
+                                        id="description"
+                                        placeholder="Mô tả ngắn gọn về dự án..."
+                                        value={formData.description}
+                                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="syncStartDate" className="flex items-center gap-2">
+                                        Ngày bắt đầu đồng bộ
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger>
+                                                    <AlertCircle className="w-3.5 h-3.5 text-muted-foreground" />
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p className="max-w-xs">Chỉ đồng bộ các file được tạo hoặc sửa đổi từ ngày này trở đi. Bỏ trống để đồng bộ toàn bộ lịch sử.</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    </Label>
+                                    <div className="relative">
+                                        <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <Input
+                                            id="syncStartDate"
+                                            type="date"
+                                            className="pl-9"
+                                            value={formData.syncStartDate}
+                                            onChange={(e) => setFormData({ ...formData, syncStartDate: e.target.value })}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Mặc định là hôm nay. Chỉ nên chỉnh sửa nếu bạn muốn đồng bộ dữ liệu cũ hơn.
+                                    </p>
+                                </div>
+                                <Separator />
+                                <div className="grid gap-2">
+                                    <Label htmlFor="sourceLink">
+                                        Source Folder Link *
+                                        <span className="text-xs text-muted-foreground ml-2">(Link hoặc ID thư mục đối tác)</span>
+                                    </Label>
+                                    <Input
+                                        id="sourceLink"
+                                        placeholder="https://drive.google.com/drive/folders/..."
+                                        value={formData.sourceFolderLink}
+                                        onChange={(e) => setFormData({ ...formData, sourceFolderLink: e.target.value })}
+                                        className={formData.sourceFolderLink && !validateFolderLink(formData.sourceFolderLink) ? 'border-red-500' : ''}
+                                    />
+                                    {formData.sourceFolderLink && !validateFolderLink(formData.sourceFolderLink) && (
+                                        <p className="text-xs text-red-500 flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" /> Link không hợp lệ
+                                        </p>
+                                    )}
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="destLink">
+                                        Destination Folder Link *
+                                        <span className="text-xs text-muted-foreground ml-2">(Link thư mục nội bộ)</span>
+                                    </Label>
+                                    <Input
+                                        id="destLink"
+                                        placeholder="https://drive.google.com/drive/folders/..."
+                                        value={formData.destFolderLink}
+                                        onChange={(e) => setFormData({ ...formData, destFolderLink: e.target.value })}
+                                        className={formData.destFolderLink && !validateFolderLink(formData.destFolderLink) ? 'border-red-500' : ''}
+                                    />
+                                    {formData.destFolderLink && !validateFolderLink(formData.destFolderLink) && (
+                                        <p className="text-xs text-red-500 flex items-center gap-1">
+                                            <AlertCircle className="w-3 h-3" /> Link không hợp lệ
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                            <DialogFooter>
+                                <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
+                                    Hủy
+                                </Button>
+                                <Button
+                                    onClick={handleSubmit}
+                                    disabled={!formData.name || !formData.sourceFolderLink || !formData.destFolderLink}
+                                >
+                                    {editingProject ? 'Cập nhật' : 'Tạo dự án'}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                </div>
             </div>
 
             {/* Search */}
@@ -264,7 +361,7 @@ export function ProjectsPage() {
                 />
             </div>
 
-            {/* Project Cards Grid */}
+            {/* Content */}
             {state.isLoading ? (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -275,7 +372,8 @@ export function ProjectsPage() {
                     <h3 className="text-lg font-medium">Chưa có dự án nào</h3>
                     <p className="text-sm text-muted-foreground mt-1">Thêm dự án mới để bắt đầu đồng bộ</p>
                 </Card>
-            ) : (
+            ) : viewMode === 'grid' ? (
+                // GRID VIEW
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                     {filteredProjects.map((project) => (
                         <Card key={project.id} className="group relative overflow-hidden hover:shadow-lg transition-all duration-200">
@@ -322,6 +420,13 @@ export function ProjectsPage() {
                                         </a>
                                     </div>
                                 </div>
+                                
+                                {project.syncStartDate && (
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 p-1.5 rounded">
+                                        <Calendar className="w-3 h-3" />
+                                        <span>Sync từ: {project.syncStartDate}</span>
+                                    </div>
+                                )}
 
                                 <Separator />
 
@@ -384,6 +489,92 @@ export function ProjectsPage() {
                             </CardContent>
                         </Card>
                     ))}
+                </div>
+            ) : (
+                // LIST VIEW (Table)
+                <div className="rounded-md border bg-card">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[300px]">Dự án</TableHead>
+                                <TableHead className="w-[120px]">Trạng thái</TableHead>
+                                <TableHead>Source / Destination</TableHead>
+                                <TableHead className="w-[150px]">Last Sync</TableHead>
+                                <TableHead className="w-[100px]">Files</TableHead>
+                                <TableHead className="w-[100px] text-right">Thao tác</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredProjects.map((project) => (
+                                <TableRow key={project.id}>
+                                    <TableCell>
+                                        <div className="font-medium">{project.name}</div>
+                                        {project.syncStartDate && (
+                                            <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                                                <Calendar className="w-3 h-3" />
+                                                Từ: {project.syncStartDate}
+                                            </div>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>{getStatusBadge(project.status)}</TableCell>
+                                    <TableCell>
+                                        <div className="flex flex-col gap-1 text-xs max-w-[200px]">
+                                            <a href={project.sourceFolderLink} target="_blank" className="flex items-center gap-1 text-muted-foreground hover:text-primary truncate">
+                                                <span className="font-semibold">SRC:</span> {project.sourceFolderId}
+                                                <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                            <a href={project.destFolderLink} target="_blank" className="flex items-center gap-1 text-muted-foreground hover:text-primary truncate">
+                                                <span className="font-semibold">DST:</span> {project.destFolderId}
+                                                <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                        </div>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">
+                                        {formatDate(project.lastSyncTimestamp)}
+                                    </TableCell>
+                                    <TableCell className="text-xs">
+                                        {project.filesCount}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => handleSync(project.id)}
+                                                disabled={syncingId === project.id || project.status === 'paused'}
+                                                title="Sync ngay"
+                                            >
+                                                {syncingId === project.id ? (
+                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                ) : (
+                                                    <RefreshCw className="w-4 h-4" />
+                                                )}
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => handleOpenEdit(project)}
+                                                title="Chỉnh sửa"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                                onClick={() => handleDelete(project.id)}
+                                                title="Xóa"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
                 </div>
             )}
         </div>

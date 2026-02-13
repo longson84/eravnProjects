@@ -18,6 +18,7 @@ export interface Project {
     totalSize: number; // Total size of all files synced for this project
     createdAt: string;
     updatedAt: string;
+    syncStartDate?: string; // Only sync files modified/created on or after this date (ISO string YYYY-MM-DD)
 }
 
 /** Sync session log (parent record) */

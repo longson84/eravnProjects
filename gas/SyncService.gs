@@ -75,7 +75,13 @@ function syncProjectById(projectId) {
 function syncSingleProject_(project, runId, settings) {
   var startTime = new Date().getTime();
   var cutoffMs = (settings.syncCutoffSeconds || CONFIG.DEFAULT_CUTOFF_SECONDS) * 1000;
-  var sinceTimestamp = project.lastSyncTimestamp || '1970-01-01T00:00:00Z';
+  
+  // Calculate effective sync start time (MAX of lastSync and syncStartDate)
+  var lastSyncTime = project.lastSyncTimestamp ? new Date(project.lastSyncTimestamp).getTime() : 0;
+  var syncStartTime = project.syncStartDate ? new Date(project.syncStartDate).getTime() : 0;
+  var effectiveTime = Math.max(lastSyncTime, syncStartTime);
+  
+  var sinceTimestamp = effectiveTime > 0 ? new Date(effectiveTime).toISOString() : '1970-01-01T00:00:00Z';
 
   var session = {
     id: generateId(),
