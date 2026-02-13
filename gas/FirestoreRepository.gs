@@ -76,6 +76,7 @@ function createProjectInDb(project) {
   project.updatedAt = getCurrentTimestamp();
   project.status = project.status || 'active';
   project.filesCount = 0;
+  project.totalSize = 0; // Add new field
   project.lastSyncTimestamp = null;
   project.lastSyncStatus = null;
 
@@ -206,6 +207,7 @@ function docToProject_(doc) {
     lastSyncTimestamp: fv_(f.lastSyncTimestamp) || null,
     lastSyncStatus: fv_(f.lastSyncStatus) || null,
     filesCount: Number(fv_(f.filesCount)) || 0,
+    totalSize: Number(fv_(f.totalSize)) || 0, // Add new field
     createdAt: fv_(f.createdAt),
     updatedAt: fv_(f.updatedAt),
   };
@@ -223,6 +225,7 @@ function projectToDoc_(p) {
     lastSyncTimestamp: p.lastSyncTimestamp ? { stringValue: p.lastSyncTimestamp } : { nullValue: null },
     lastSyncStatus: p.lastSyncStatus ? { stringValue: p.lastSyncStatus } : { nullValue: null },
     filesCount: { integerValue: String(p.filesCount || 0) },
+    totalSize: { integerValue: String(p.totalSize || 0) }, // Add new field
     createdAt: { stringValue: p.createdAt },
     updatedAt: { stringValue: p.updatedAt || getCurrentTimestamp() },
   }};
@@ -239,6 +242,7 @@ function docToSession_(doc) {
     executionDurationSeconds: Number(fv_(f.executionDurationSeconds)) || 0,
     status: fv_(f.status),
     filesCount: Number(fv_(f.filesCount)) || 0,
+    totalSizeSynced: Number(fv_(f.totalSizeSynced)) || 0, // Add new field
     errorMessage: fv_(f.errorMessage) || undefined,
   };
 }

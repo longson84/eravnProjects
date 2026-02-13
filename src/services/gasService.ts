@@ -4,7 +4,7 @@
 // Wraps google.script.run calls in Promises.
 // Falls back to mock data in local development.
 
-import type { Project, SyncSession, FileLog, AppSettings, ProjectHeartbeat } from '@/types/types';
+import type { Project, SyncSession, FileLog, AppSettings, ProjectHeartbeat, DashboardData } from '@/types/types';
 import {
     mockProjects,
     mockSyncSessions,
@@ -48,7 +48,7 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
         runSyncProject: () => ({ success: true, message: `Sync started for project ${args[0]}` }),
         getSettings: () => mockSettings,
         updateSettings: () => ({ ...mockSettings, ...args[0] }),
-        getSyncSessions: () => mockSyncSessions,
+        getSyncSessions: () => mockSyncSessions.slice(0, args[0]),
         getSessionsByProject: () => mockSyncSessions.filter(s => s.projectId === args[0]),
         getFileLogs: () => mockFileLogs.filter(f => f.sessionId === args[0]),
         getProjectHeartbeats: () => mockProjects.map(p => ({
@@ -56,6 +56,24 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
             lastCheckTimestamp: new Date().toISOString(),
             lastStatus: p.lastSyncStatus || 'success',
         })),
+        // Dashboard mocks
+        getDashboardData: () => ({
+            projectSummary: { totalProjects: mockProjects.length, activeProjects: mockProjects.filter(p => p.status === 'active').length },
+            syncProgress: {
+                today: { files: 120, size: 12345678, projects: 5, duration: 3600, sessions: 10 },
+                last7Days: { files: 840, size: 86419746, projects: 15, duration: 25200, sessions: 70 },
+            },
+            syncChart: [
+                { date: '2023-05-20', filesCount: 50, duration: 1800 },
+                { date: '2023-05-21', filesCount: 65, duration: 2200 },
+                { date: '2023-05-22', filesCount: 80, duration: 2500 },
+                { date: '2023-05-23', filesCount: 70, duration: 2300 },
+                { date: '2023-05-24', filesCount: 90, duration: 2800 },
+                { date: '2023-05-25', filesCount: 110, duration: 3200 },
+                { date: '2023-05-26', filesCount: 100, duration: 3000 },
+            ],
+            recentSyncs: mockSyncSessions.slice(0, 10),
+        }),
     };
 
     const handler = handlers[functionName];
@@ -94,4 +112,7 @@ export const gasService = {
 
     // Heartbeat
     getProjectHeartbeats: () => gasRun<ProjectHeartbeat[]>('getProjectHeartbeats'),
+
+    // Dashboard
+    getDashboardData: () => gasRun<DashboardData>('getDashboardData'),
 };

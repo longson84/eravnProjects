@@ -115,6 +115,7 @@ Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ c
 - 
 ## 8. DASHBOARD
 
+Chi tiết trong [Dashboard Trae](./dashboard_trae.md)
 Dashboard mang lại một overview để kiểm soát quá trình.
 
 Để đảm bảo tính scaling, cần thiết kế để dashboard được lắp ghép từ nhiều component tính toán, thống kê. Trong phần này sẽ liệt kê ra một số component quan trọng đầu tiên. Trong tương lai, chúng ta có thể bổ sung

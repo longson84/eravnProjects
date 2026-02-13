@@ -86,6 +86,7 @@ function syncSingleProject_(project, runId, settings) {
     executionDurationSeconds: 0,
     status: 'success',
     filesCount: 0,
+    totalSizeSynced: 0, // Add new field
   };
 
   var fileLogsBatch = [];
@@ -125,6 +126,7 @@ function syncSingleProject_(project, runId, settings) {
 
       // Copy file
       var copiedFile = copyFileToDest(file.id, destFolderId, file.name);
+      var fileSize = Number(file.size) || 0;
 
       fileLogsBatch.push({
         fileName: file.name,
@@ -133,10 +135,11 @@ function syncSingleProject_(project, runId, settings) {
         sourcePath: pathPrefix + file.name,
         createdDate: file.createdTime || getCurrentTimestamp(),
         modifiedDate: file.modifiedTime || getCurrentTimestamp(),
-        fileSize: Number(file.size) || 0,
+        fileSize: fileSize,
       });
 
       session.filesCount++;
+      session.totalSizeSynced += fileSize;
     }
 
     // Recurse into subfolders
@@ -173,6 +176,7 @@ function syncSingleProject_(project, runId, settings) {
   project.lastSyncTimestamp = getCurrentTimestamp();
   project.lastSyncStatus = session.status;
   project.filesCount = (project.filesCount || 0) + session.filesCount;
+  project.totalSize = (project.totalSize || 0) + session.totalSizeSynced; // Add total size
   project.updatedAt = getCurrentTimestamp();
   if (project.status === 'error' && session.status !== 'error') {
     project.status = 'active';
