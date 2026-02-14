@@ -21,6 +21,7 @@ export function SettingsPage() {
     const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
     const [isResetting, setIsResetting] = useState(false);
+    const [isTestingWebhook, setIsTestingWebhook] = useState(false);
 
     // Cron Helpers
     const cronToMinutes = (cron: string): number => {
@@ -157,7 +158,35 @@ export function SettingsPage() {
                             <Separator />
                             <div className="grid gap-2">
                                 <Label htmlFor="webhook">Google Chat Webhook URL</Label>
-                                <Input id="webhook" value={form.webhookUrl} onChange={e => update('webhookUrl', e.target.value)} placeholder="https://chat.googleapis.com/v1/spaces/..." className="font-mono text-xs" />
+                                <div className="flex gap-2">
+                                    <Input 
+                                        id="webhook" 
+                                        value={form.webhookUrl} 
+                                        onChange={e => update('webhookUrl', e.target.value)} 
+                                        placeholder="https://chat.googleapis.com/v1/spaces/..." 
+                                        className="font-mono text-xs flex-1" 
+                                    />
+                                    <Button 
+                                        variant="outline" 
+                                        size="icon"
+                                        onClick={async () => {
+                                            if (!form.webhookUrl) return;
+                                            setIsTestingWebhook(true);
+                                            try {
+                                                await gasService.testWebhook(form.webhookUrl);
+                                                alert('Gửi test thành công! Hãy kiểm tra Google Chat.');
+                                            } catch (e) {
+                                                alert('Gửi thất bại: ' + (e as Error).message);
+                                            } finally {
+                                                setIsTestingWebhook(false);
+                                            }
+                                        }}
+                                        disabled={!form.webhookUrl || isTestingWebhook}
+                                        title="Gửi tin nhắn test"
+                                    >
+                                        {isTestingWebhook ? <Clock className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

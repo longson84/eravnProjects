@@ -76,3 +76,25 @@ function sendWebhookNotification(message) {
     Logger.log('Webhook send failed: ' + e.message);
   }
 }
+
+/**
+ * Test webhook connection
+ * @param {string} url - The webhook URL to test
+ * @return {boolean} - True if successful
+ */
+function testWebhook(url) {
+  if (!url) throw new Error('URL is empty');
+  
+  try {
+    UrlFetchApp.fetch(url, {
+      method: 'POST',
+      contentType: 'application/json',
+      payload: JSON.stringify({ 
+        text: '🔔 Test notification from eravnProjects\nNếu bạn thấy tin nhắn này, kết nối đã thành công! 🚀' 
+      }),
+    });
+    return true;
+  } catch (e) {
+    throw new Error('Gửi thất bại: ' + e.message);
+  }
+}

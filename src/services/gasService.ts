@@ -138,6 +138,11 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
             mockFileLogs.length = 0;
             return true;
         },
+        testWebhook: () => {
+            const [url] = args;
+            if (!url) throw new Error('URL is required');
+            return true;
+        }
     };
 
     const handler = handlers[functionName];
@@ -182,4 +187,5 @@ export const gasService = {
 
     // System
     resetDatabase: () => gasRun<boolean>('resetDatabase'),
+    testWebhook: (url: string) => gasRun<boolean>('testWebhook', url),
 };
