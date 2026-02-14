@@ -19,6 +19,7 @@ export interface Project {
     createdAt: string;
     updatedAt: string;
     syncStartDate?: string; // Only sync files modified/created on or after this date (ISO string YYYY-MM-DD)
+    isDeleted?: boolean;
 }
 
 /** Sync session log (parent record) */

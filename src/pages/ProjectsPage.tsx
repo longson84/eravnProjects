@@ -93,8 +93,9 @@ export function ProjectsPage() {
 
     const filteredProjects = state.projects.filter(
         (p) =>
-            p.name.toLowerCase().includes(search.toLowerCase()) ||
-            p.description.toLowerCase().includes(search.toLowerCase())
+            !p.isDeleted &&
+            (p.name.toLowerCase().includes(search.toLowerCase()) ||
+            p.description.toLowerCase().includes(search.toLowerCase()))
     );
 
     const extractFolderId = (link: string): string => {

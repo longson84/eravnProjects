@@ -21,7 +21,9 @@ function syncAllProjects() {
   });
 
   // Filter active projects only
-  var activeProjects = projects.filter(function(p) { return p.status === 'active'; });
+  var activeProjects = projects.filter(function(p) {
+    return p.status === 'active' && !p.isDeleted;
+  });
 
   for (var i = 0; i < activeProjects.length; i++) {
     var project = activeProjects[i];

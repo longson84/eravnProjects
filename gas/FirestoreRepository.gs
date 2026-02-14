@@ -76,7 +76,16 @@ function saveProject(project) {
 }
 
 function deleteProject(projectId) {
-  firestoreRequest_('DELETE', 'projects/' + projectId);
+  // Soft delete implementation
+  var doc = {
+    fields: {
+      isDeleted: { booleanValue: true },
+      deletedAt: { stringValue: getCurrentTimestamp() },
+      status: { stringValue: 'paused' } // Optionally pause it to be safe
+    }
+  };
+  var updateMask = 'updateMask.fieldPaths=isDeleted&updateMask.fieldPaths=deletedAt&updateMask.fieldPaths=status';
+  firestoreRequest_('PATCH', 'projects/' + projectId + '?' + updateMask, doc);
   return { success: true };
 }
 
@@ -259,6 +268,8 @@ function docToProject_(doc) {
     destFolderLink: fv_(f.destFolderLink),
     syncStartDate: fv_(f.syncStartDate), // Add this field
     status: fv_(f.status) || 'active',
+    isDeleted: fv_(f.isDeleted) === true || fv_(f.isDeleted) === 'true',
+    deletedAt: fv_(f.deletedAt) || null,
     lastSyncTimestamp: fv_(f.lastSyncTimestamp) || null,
     lastSyncStatus: fv_(f.lastSyncStatus) || null,
     filesCount: Number(fv_(f.filesCount)) || 0,
@@ -278,6 +289,8 @@ function projectToDoc_(p) {
     destFolderLink: { stringValue: p.destFolderLink },
     syncStartDate: p.syncStartDate ? { stringValue: p.syncStartDate } : { nullValue: null }, // Add this field
     status: { stringValue: p.status },
+    isDeleted: { booleanValue: !!p.isDeleted },
+    deletedAt: p.deletedAt ? { stringValue: p.deletedAt } : { nullValue: null },
     lastSyncTimestamp: p.lastSyncTimestamp ? { stringValue: p.lastSyncTimestamp } : { nullValue: null },
     lastSyncStatus: p.lastSyncStatus ? { stringValue: p.lastSyncStatus } : { nullValue: null },
     filesCount: { integerValue: String(p.filesCount || 0) },

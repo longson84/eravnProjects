@@ -110,7 +110,18 @@ Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ c
 - **Principle of Least Privilege:** Script chỉ yêu cầu các Scope cần thiết (`drive.file`, `forms`, `script.external_request`).
 - **Data Validation:** UI phải validate định dạng Link/ID folder trước khi lưu xuống Database.
 
-### 6.4. Khả năng bảo trì (Maintainability)
+### 6.4. Quản lý xóa dự án (Soft Delete)
+
+- **Cơ chế:**
+    - Sử dụng field `isDeleted` (boolean) riêng biệt, tách biệt với `status`.
+    - `deleteProject` API thực hiện chuyển `isDeleted` = `true` và lưu `deletedAt`.
+    - `getAllProjects` mặc định lọc bỏ các dự án có `isDeleted` = `true`.
+- **Mục đích:**
+    - Tránh lỗi Timeout của Google Apps Script khi phải xóa lượng lớn Sync Logs liên quan (Hard Delete).
+    - Bảo toàn lịch sử đồng bộ (Audit Trail) để đối soát sau này.
+    - Dễ dàng khôi phục dự án nếu xóa nhầm (chỉ cần set `isDeleted` = `false`).
+
+### 6.5. Khả năng bảo trì (Maintainability)
 
 - **Code Style:** Đặt tên biến/hàm theo kiểu camelCase, có comment giải thích cho các logic phức tạp.
 - **Documentation:** Luôn cập nhật SSoT (Single Source of Truth) này khi có thay đổi về logic.

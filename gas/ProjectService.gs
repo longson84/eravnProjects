@@ -6,10 +6,12 @@
 var ProjectService = {
   
   /**
-   * Get all projects
+   * Get all active (not deleted) projects
    */
   getAllProjects: function() {
-    return getAllProjects();
+    var all = getAllProjects();
+    // Filter out soft-deleted projects
+    return all.filter(function(p) { return !p.isDeleted; });
   },
 
   /**
@@ -17,7 +19,9 @@ var ProjectService = {
    */
   getProjectById: function(id) {
     if (!id) throw new Error('Project ID is required');
-    return getProjectById(id);
+    var p = getProjectById(id);
+    if (p && p.isDeleted) return null; // Treat deleted project as not found
+    return p;
   },
 
   /**
