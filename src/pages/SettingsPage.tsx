@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Settings, Save, Bell, Clock, Database, Webhook, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Settings, Save, Bell, Clock, Database, RotateCcw, CheckCircle2, AlertTriangle, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useAppContext } from '@/context/AppContext';
+import { gasService } from '@/services/gasService';
 import type { AppSettings } from '@/types/types';
 
 export function SettingsPage() {
@@ -14,11 +16,45 @@ export function SettingsPage() {
     const [form, setForm] = useState<AppSettings>({ ...state.settings });
     const [saved, setSaved] = useState(false);
     const [saving, setSaving] = useState(false);
+    
+    // Reset DB States
+    const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+    const [resetConfirmText, setResetConfirmText] = useState('');
+    const [isResetting, setIsResetting] = useState(false);
+
+    // Cron Helpers
+    const cronToMinutes = (cron: string): number => {
+        if (!cron) return 360; // Default 6 hours
+        // Match */N * * * * (Minutes)
+        const minMatch = cron.match(/^\*\/(\d+)\s+\*\s+\*\s+\*\s+\*$/);
+        if (minMatch) return parseInt(minMatch[1], 10);
+        
+        // Match 0 */N * * * (Hours)
+        const hourMatch = cron.match(/^0\s+\*\/(\d+)\s+\*\s+\*\s+\*$/);
+        if (hourMatch) return parseInt(hourMatch[1], 10) * 60;
+
+        return 360; // Fallback
+    };
+
+    const minutesToCron = (minutes: number): string => {
+        if (minutes < 60) {
+            return `*/${minutes} * * * *`;
+        }
+        const hours = Math.floor(minutes / 60);
+        return `0 */${hours} * * *`;
+    };
+
+    const [scheduleMinutes, setScheduleMinutes] = useState(cronToMinutes(state.settings.defaultScheduleCron));
 
     const handleSave = async () => {
         setSaving(true);
         try {
-            await updateSettings(form);
+            // Update form with latest minutes value converted to cron
+            const updatedForm = {
+                ...form,
+                defaultScheduleCron: minutesToCron(scheduleMinutes)
+            };
+            await updateSettings(updatedForm);
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
         } finally { setSaving(false); }
@@ -27,6 +63,24 @@ export function SettingsPage() {
     const handleReset = () => setForm({ ...state.settings });
 
     const update = (key: keyof AppSettings, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+
+    const handleResetDatabase = async () => {
+        if (resetConfirmText !== 'I understand') return;
+        
+        setIsResetting(true);
+        try {
+            await gasService.resetDatabase();
+            setIsResetDialogOpen(false);
+            setResetConfirmText('');
+            // Optional: reload page or clear local state if needed
+            window.location.reload();
+        } catch (error) {
+            console.error('Reset failed:', error);
+            alert('Reset failed. Check console for details.');
+        } finally {
+            setIsResetting(false);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -57,9 +111,22 @@ export function SettingsPage() {
                         </div>
                         <Separator />
                         <div className="grid gap-2">
-                            <Label htmlFor="schedule">Lịch chạy mặc định (Cron)</Label>
-                            <Input id="schedule" value={form.defaultScheduleCron} onChange={e => update('defaultScheduleCron', e.target.value)} placeholder="0 */6 * * *" />
-                            <p className="text-xs text-muted-foreground">Biểu thức Cron cho lịch chạy tự động. VD: <code className="bg-muted px-1 rounded">0 */6 * * *</code> = mỗi 6 giờ</p>
+                            <Label htmlFor="schedule">Lịch chạy mặc định (Phút)</Label>
+                            <Input 
+                                id="schedule" 
+                                type="number" 
+                                min="1"
+                                value={scheduleMinutes} 
+                                onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setScheduleMinutes(val);
+                                    update('defaultScheduleCron', minutesToCron(val));
+                                }} 
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Chu kỳ chạy đồng bộ (tính bằng phút). 
+                                {scheduleMinutes >= 60 && ` (~${(scheduleMinutes / 60).toFixed(1)} giờ)`}
+                            </p>
                         </div>
                         <Separator />
                         <div className="grid gap-2">
@@ -123,8 +190,71 @@ export function SettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    <Card className="border-destructive/50">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="w-5 h-5" />Danger Zone</CardTitle>
+                            <CardDescription>Các thao tác nguy hiểm không thể hoàn tác</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label className="text-destructive">Reset Database</Label>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Xóa toàn bộ Projects, Sync Sessions và File Logs.</p>
+                                </div>
+                                <Button variant="destructive" onClick={() => setIsResetDialogOpen(true)}>
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Reset DB
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
             </div>
+
+            <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="text-destructive flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5" />
+                            Xác nhận Reset Database
+                        </DialogTitle>
+                        <DialogDescription className="space-y-2 pt-2">
+                            <p>Hành động này sẽ <strong>xóa vĩnh viễn</strong> tất cả dữ liệu trong hệ thống bao gồm:</p>
+                            <ul className="list-disc list-inside text-sm">
+                                <li>Tất cả các Dự án (Projects)</li>
+                                <li>Lịch sử Sync (Sessions)</li>
+                                <li>Log chi tiết files</li>
+                            </ul>
+                            <p className="text-destructive font-medium">Hành động này không thể hoàn tác!</p>
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="grid gap-4 py-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="confirm">Nhập "I understand" để xác nhận</Label>
+                            <Input 
+                                id="confirm" 
+                                value={resetConfirmText} 
+                                onChange={(e) => setResetConfirmText(e.target.value)}
+                                placeholder="I understand"
+                                className="border-destructive/50 focus-visible:ring-destructive"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsResetDialogOpen(false)} disabled={isResetting}>Hủy</Button>
+                        <Button 
+                            variant="destructive" 
+                            onClick={handleResetDatabase} 
+                            disabled={resetConfirmText !== 'I understand' || isResetting}
+                        >
+                            {isResetting ? 'Đang xóa...' : 'Xác nhận xóa'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

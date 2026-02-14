@@ -4,7 +4,7 @@
 // Wraps google.script.run calls in Promises.
 // Falls back to mock data in local development.
 
-import type { Project, SyncSession, FileLog, AppSettings, ProjectHeartbeat, DashboardData, SyncLogEntry } from '@/types/types';
+import type { Project, FileLog, AppSettings, ProjectHeartbeat, DashboardData, SyncLogEntry } from '@/types/types';
 import {
     mockProjects,
     mockSyncSessions,
@@ -132,6 +132,12 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
             ],
             recentSyncs: mockSyncSessions.slice(0, 10),
         }),
+        resetDatabase: () => {
+            mockProjects.length = 0;
+            mockSyncSessions.length = 0;
+            mockFileLogs.length = 0;
+            return true;
+        },
     };
 
     const handler = handlers[functionName];
@@ -173,4 +179,7 @@ export const gasService = {
 
     // Dashboard
     getDashboardData: () => gasRun<DashboardData>('getDashboardData'),
+
+    // System
+    resetDatabase: () => gasRun<boolean>('resetDatabase'),
 };

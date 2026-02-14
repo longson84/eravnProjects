@@ -64,6 +64,7 @@ export function ProjectsPage() {
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [syncingId, setSyncingId] = useState<string | null>(null);
     
@@ -141,25 +142,33 @@ export function ProjectsPage() {
         if (!formData.name || !formData.sourceFolderLink || !formData.destFolderLink) return;
         if (!validateFolderLink(formData.sourceFolderLink) || !validateFolderLink(formData.destFolderLink)) return;
 
-        const projectData: Partial<Project> = {
-            name: formData.name,
-            description: formData.description,
-            sourceFolderLink: formData.sourceFolderLink,
-            sourceFolderId: extractFolderId(formData.sourceFolderLink),
-            destFolderLink: formData.destFolderLink,
-            destFolderId: extractFolderId(formData.destFolderLink),
-            syncStartDate: formData.syncStartDate || undefined, // undefined if empty string
-            status: 'active',
-        };
+        setIsSubmitting(true);
+        try {
+            const projectData: Partial<Project> = {
+                name: formData.name,
+                description: formData.description,
+                sourceFolderLink: formData.sourceFolderLink,
+                sourceFolderId: extractFolderId(formData.sourceFolderLink),
+                destFolderLink: formData.destFolderLink,
+                destFolderId: extractFolderId(formData.destFolderLink),
+                syncStartDate: formData.syncStartDate || undefined, // undefined if empty string
+                status: 'active',
+            };
 
-        if (editingProject) {
-            await updateProject({ ...editingProject, ...projectData });
-        } else {
-            await createProject(projectData);
+            if (editingProject) {
+                await updateProject({ ...editingProject, ...projectData });
+            } else {
+                await createProject(projectData);
+            }
+
+            setIsCreateOpen(false);
+            resetForm();
+        } catch (error) {
+            console.error('Failed to save project:', error);
+            // Optional: Show error toast here if needed
+        } finally {
+            setIsSubmitting(false);
         }
-
-        setIsCreateOpen(false);
-        resetForm();
     };
 
     const handleDelete = async (id: string) => {
@@ -346,14 +355,21 @@ export function ProjectsPage() {
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }}>
+                                <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }} disabled={isSubmitting}>
                                     Hủy
                                 </Button>
                                 <Button
                                     onClick={handleSubmit}
-                                    disabled={!formData.name || !formData.sourceFolderLink || !formData.destFolderLink}
+                                    disabled={!formData.name || !formData.sourceFolderLink || !formData.destFolderLink || isSubmitting}
                                 >
-                                    {editingProject ? 'Cập nhật' : 'Tạo dự án'}
+                                    {isSubmitting ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                            Đang xử lý...
+                                        </>
+                                    ) : (
+                                        editingProject ? 'Cập nhật' : 'Tạo dự án'
+                                    )}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>

@@ -299,8 +299,84 @@ function saveSettingsToDb(settings) {
     props.setProperty('APP_SETTINGS', JSON.stringify(settings));
     return settings;
   } catch (e) {
-    return getDefaultSettings_();
+    Logger.log('Error saving settings: ' + e.message);
+    throw e;
   }
+}
+
+// ==========================================
+// Dangerous Operations (Reset DB)
+// ==========================================
+
+/**
+ * Hard delete all data from the database
+ * @returns {boolean}
+ */
+function resetDatabase_() {
+  var collections = ['projects', 'syncSessions', 'fileLogs'];
+  
+  try {
+    for (var i = 0; i < collections.length; i++) {
+      deleteAllDocumentsInCollection_(collections[i]);
+    }
+    return true;
+  } catch (e) {
+    Logger.log('Error resetting database: ' + e.message);
+    throw e;
+  }
+}
+
+/**
+ * Delete all documents in a collection using Batch Write
+ * @param {string} collectionName
+ */
+function deleteAllDocumentsInCollection_(collectionName) {
+  var settings = getSettingsFromCache_();
+  var projectId = settings.firebaseProjectId || CONFIG.FIRESTORE_PROJECT_ID;
+  var dbRoot = CONFIG.FIRESTORE_BASE_URL + projectId + '/databases/(default)/documents';
+  var batchUrl = dbRoot + ':batchWrite';
+  
+  var pageToken = null;
+  
+  do {
+    // List documents
+    var listUrl = dbRoot + '/' + collectionName + '?pageSize=100'; // Chunk size for read
+    if (pageToken) listUrl += '&pageToken=' + pageToken;
+    
+    var response = UrlFetchApp.fetch(listUrl, {
+      method: 'GET',
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true
+    });
+    
+    var result = JSON.parse(response.getContentText());
+    var docs = result.documents || [];
+    pageToken = result.nextPageToken;
+    
+    if (docs.length === 0) continue;
+    
+    // Batch Delete
+    var writes = docs.map(function(doc) {
+      return { delete: doc.name };
+    });
+    
+    var payload = { writes: writes };
+    var options = {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+    
+    var deleteResponse = UrlFetchApp.fetch(batchUrl, options);
+    if (deleteResponse.getResponseCode() >= 400) {
+      throw new Error('Failed to delete batch in ' + collectionName + ': ' + deleteResponse.getContentText());
+    }
+    
+    Logger.log('Deleted ' + docs.length + ' docs from ' + collectionName);
+    
+  } while (pageToken);
 }
 
 // ==========================================

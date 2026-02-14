@@ -48,6 +48,17 @@ var ProjectService = {
       projectData.destFolderId = extractFolderIdFromLink(projectData.destFolderLink);
     }
 
+    // Check for duplicates (same source + dest pair)
+    var existingProjects = this.getAllProjects();
+    var isDuplicate = existingProjects.some(function(p) {
+      return p.sourceFolderId === projectData.sourceFolderId && 
+             p.destFolderId === projectData.destFolderId;
+    });
+    
+    if (isDuplicate) {
+      throw new Error('Dự án với cặp thư mục Source và Destination này đã tồn tại!');
+    }
+
     // 3. Set Default Values (Business Rules)
     var newProject = {
       id: generateId(), // Generate ID here or let repo do it, but explicit is better in Service

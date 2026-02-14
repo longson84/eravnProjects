@@ -224,35 +224,42 @@ function syncSingleProject_(project, runId, settings, options) {
   }
 
   // EXECUTION LOGIC
-  if (options.retryFileIds && options.retryFileIds.length > 0) {
-      // RETRY MODE
-      Logger.log('Running in RETRY MODE for ' + options.retryFileIds.length + ' files.');
-      
-      var retryFiles = [];
-      for(var k=0; k<options.retryFileIds.length; k++) {
-          try {
-              var fId = options.retryFileIds[k];
-              var f = Drive.Files.get(fId, { fields: CONFIG.DRIVE_FIELDS });
-              retryFiles.push(f);
-          } catch(e) {
-              fileLogsBatch.push({
-                  fileName: 'Unknown (' + options.retryFileIds[k] + ')',
-                  sourceLink: '',
-                  destLink: '',
-                  sourcePath: 'Unknown',
-                  createdDate: getCurrentTimestamp(),
-                  modifiedDate: getCurrentTimestamp(),
-                  fileSize: 0,
-                  status: 'skipped',
-                  errorMessage: 'Source file deleted before retry'
-              });
-          }
-      }
-      processFiles(retryFiles, project.destFolderId, '/Retry/');
-      
-  } else {
-      // NORMAL MODE
-      syncFolder(project.sourceFolderId, project.destFolderId, '/');
+  try {
+    if (options.retryFileIds && options.retryFileIds.length > 0) {
+        // RETRY MODE
+        Logger.log('Running in RETRY MODE for ' + options.retryFileIds.length + ' files.');
+        
+        var retryFiles = [];
+        for(var k=0; k<options.retryFileIds.length; k++) {
+            try {
+                var fId = options.retryFileIds[k];
+                var f = Drive.Files.get(fId, { fields: CONFIG.DRIVE_FIELDS });
+                retryFiles.push(f);
+            } catch(e) {
+                fileLogsBatch.push({
+                    fileName: 'Unknown (' + options.retryFileIds[k] + ')',
+                    sourceLink: '',
+                    destLink: '',
+                    sourcePath: 'Unknown',
+                    createdDate: getCurrentTimestamp(),
+                    modifiedDate: getCurrentTimestamp(),
+                    fileSize: 0,
+                    status: 'skipped',
+                    errorMessage: 'Source file deleted before retry'
+                });
+            }
+        }
+        processFiles(retryFiles, project.destFolderId, '/Retry/');
+        
+    } else {
+        // NORMAL MODE
+        syncFolder(project.sourceFolderId, project.destFolderId, '/');
+    }
+  } catch (e) {
+    Logger.log('Sync execution FAILED: ' + e.message);
+    session.status = 'error';
+    session.errorMessage = e.message;
+    // Continue to save whatever was processed
   }
 
   // Calculate duration

@@ -166,7 +166,11 @@ function retryDriveCall_(fn) {
     try {
       return fn();
     } catch (e) {
-      var isRateLimited = e.message && (e.message.indexOf('429') !== -1 || e.message.indexOf('Rate Limit') !== -1);
+      var isRateLimited = e.message && (
+        e.message.indexOf('429') !== -1 || 
+        e.message.indexOf('Rate Limit') !== -1 ||
+        e.message.indexOf('Empty response') !== -1
+      );
       if (isRateLimited && attempt < maxRetries) {
         Logger.log('Drive API rate limited. Retry ' + (attempt + 1) + '/' + maxRetries);
         exponentialBackoff(attempt);

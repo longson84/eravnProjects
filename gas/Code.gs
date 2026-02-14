@@ -84,3 +84,11 @@ function getFileLogs(sessionId) {
 function getProjectHeartbeats() {
   return getAllProjectHeartbeats();
 }
+
+// ==========================================
+// System API
+// ==========================================
+
+function resetDatabase() {
+  return resetDatabase_();
+}
