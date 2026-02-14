@@ -20,6 +20,10 @@ export interface Project {
     updatedAt: string;
     syncStartDate?: string; // Only sync files modified/created on or after this date (ISO string YYYY-MM-DD)
     isDeleted?: boolean;
+    stats?: {
+        todayFiles: number;
+        last7DaysFiles: number;
+    };
 }
 
 /** Sync session log (parent record) */
@@ -108,6 +112,7 @@ export interface SyncProgressStats {
     size: number;
     duration: number;
     sessions: number;
+    projects: number; // Added: Number of unique projects synced
 }
 
 /** Chart data point for sync performance over time */

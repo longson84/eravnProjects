@@ -67,7 +67,17 @@ function syncProjectById(projectId, options) {
     sendSyncSummary([result], runId);
   }
 
-  return { success: true, runId: runId, message: 'Synced ' + result.filesCount + ' files' };
+  return { 
+    success: true, 
+    runId: runId, 
+    message: 'Synced ' + result.filesCount + ' files',
+    stats: {
+      filesCount: result.filesCount,
+      totalSizeSynced: result.totalSizeSynced,
+      failedCount: result.failedFilesCount || 0,
+      status: result.status
+    }
+  };
 }
 
 /**

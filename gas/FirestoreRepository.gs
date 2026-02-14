@@ -457,6 +457,7 @@ function sessionToDoc_(s) {
     executionDurationSeconds: { integerValue: String(s.executionDurationSeconds) },
     status: { stringValue: s.status },
     filesCount: { integerValue: String(s.filesCount) },
+    totalSizeSynced: { integerValue: String(s.totalSizeSynced || 0) },
     failedFilesCount: { integerValue: String(s.failedFilesCount || 0) }, // Add failedFilesCount
     retried: { booleanValue: !!s.retried },
     triggeredBy: { stringValue: s.triggeredBy || 'manual' }

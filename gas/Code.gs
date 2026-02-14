@@ -18,7 +18,17 @@ function doGet() {
 // ==========================================
 
 function getProjects() {
-  return ProjectService.getAllProjects();
+  var projects = ProjectService.getAllProjects();
+  var stats = ProjectService.getProjectStatsMap();
+  
+  return projects.map(function(p) {
+    if (stats[p.id]) {
+      p.stats = stats[p.id];
+    } else {
+      p.stats = { todayFiles: 0, last7DaysFiles: 0 };
+    }
+    return p;
+  });
 }
 
 function getProject(projectId) {

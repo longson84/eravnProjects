@@ -3,6 +3,7 @@
 // ==========================================
 
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     Plus,
     Search,
@@ -14,7 +15,6 @@ import {
     Trash2,
     RefreshCw,
     Clock,
-    FileCheck2,
     AlertCircle,
     CheckCircle2,
     XCircle,
@@ -70,6 +70,18 @@ export function ProjectsPage() {
     
     // View mode state
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const navigate = useNavigate();
+    const [syncResult, setSyncResult] = useState<{
+        open: boolean;
+        success: boolean;
+        message: string;
+        stats?: {
+            filesCount: number;
+            totalSizeSynced: number;
+            failedCount: number;
+            status: string;
+        };
+    }>({ open: false, success: false, message: '' });
 
     // Load view mode from localStorage on mount
     useEffect(() => {
@@ -177,12 +189,34 @@ export function ProjectsPage() {
         }
     };
 
+    const formatBytes = (bytes: number, decimals = 2): string => {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+    };
+
     const handleSync = async (projectId: string) => {
         setSyncingId(projectId);
         try {
-            await gasService.runSyncProject(projectId);
+            const result = await gasService.runSyncProject(projectId);
             queryClient.invalidateQueries({ queryKey: ['projects'] });
             queryClient.invalidateQueries({ queryKey: ['syncLogs'] });
+            
+            setSyncResult({
+                open: true,
+                success: result.success,
+                message: result.message,
+                stats: result.stats
+            });
+        } catch (e) {
+            setSyncResult({
+                open: true,
+                success: false,
+                message: 'Sync failed: ' + (e as Error).message
+            });
         } finally {
             setSyncingId(null);
         }
@@ -422,34 +456,34 @@ export function ProjectsPage() {
                             <CardContent className="space-y-4">
                                 {/* Folder links */}
                                 <div className="space-y-2">
-                                    <div className="flex items-center gap-2 text-xs">
-                                        <span className="text-muted-foreground w-10 shrink-0">SRC</span>
+                                    <div className="flex items-center text-xs">
+                                        <span className="text-muted-foreground w-16 shrink-0">Nguồn:</span>
                                         <a
                                             href={project.sourceFolderLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-primary hover:underline truncate flex items-center gap-1"
+                                            className="text-primary hover:underline truncate flex items-center gap-1 min-w-0 flex-1"
                                         >
-                                            {project.sourceFolderId.slice(0, 20)}...
+                                            {project.sourceFolderId}
                                             <ExternalLink className="w-3 h-3 shrink-0" />
                                         </a>
                                     </div>
-                                    <div className="flex items-center gap-2 text-xs">
-                                        <span className="text-muted-foreground w-10 shrink-0">DEST</span>
+                                    <div className="flex items-center text-xs">
+                                        <span className="text-muted-foreground w-16 shrink-0">Đích:</span>
                                         <a
                                             href={project.destFolderLink}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-primary hover:underline truncate flex items-center gap-1"
+                                            className="text-primary hover:underline truncate flex items-center gap-1 min-w-0 flex-1"
                                         >
-                                            {project.destFolderId.slice(0, 20)}...
+                                            {project.destFolderId}
                                             <ExternalLink className="w-3 h-3 shrink-0" />
                                         </a>
                                     </div>
                                     
                                     {project.syncStartDate && (
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
-                                            <span className="text-muted-foreground w-10 shrink-0">START</span>
+                                        <div className="flex items-center text-xs pt-1">
+                                            <span className="text-muted-foreground w-16 shrink-0">Sync từ:</span>
                                             <div className="flex items-center gap-1 bg-muted/50 px-1.5 py-0.5 rounded">
                                                 <Calendar className="w-3 h-3" />
                                                 <span>{formatDateShort(project.syncStartDate)}</span>
@@ -461,13 +495,20 @@ export function ProjectsPage() {
                                 <Separator />
 
                                 {/* Stats */}
-                                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-1">
-                                        <FileCheck2 className="w-3.5 h-3.5" />
-                                        <span>Đã sync: {project.filesCount} files</span>
+                                <div className="flex flex-col gap-2 text-xs text-muted-foreground">
+                                    <div className="flex items-center justify-between">
+                                        <span>Sync hôm nay:</span>
+                                        <span className="font-medium text-foreground">{project.stats?.todayFiles || 0} files</span>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                        <Clock className="w-3.5 h-3.5" />
+                                    <div className="flex items-center justify-between">
+                                        <span>Sync 7 ngày:</span>
+                                        <span className="font-medium text-foreground">{project.stats?.last7DaysFiles || 0} files</span>
+                                    </div>
+                                    <div className="flex items-center justify-between pt-2 border-t mt-1">
+                                        <div className="flex items-center gap-1">
+                                            <Clock className="w-3.5 h-3.5" />
+                                            <span>Sync lần cuối:</span>
+                                        </div>
                                         <span>{formatDate(project.lastSyncTimestamp)}</span>
                                     </div>
                                 </div>
@@ -529,9 +570,9 @@ export function ProjectsPage() {
                                 <TableHead className="w-[300px]">Dự án</TableHead>
                                 <TableHead className="w-[120px]">Trạng thái</TableHead>
                                 <TableHead>Source / Destination</TableHead>
-                                <TableHead className="w-[130px]">Start Sync</TableHead>
-                                <TableHead className="w-[150px]">Last Sync</TableHead>
-                                <TableHead className="w-[120px]">Files Synced</TableHead>
+                                <TableHead className="w-[130px]">Sync từ</TableHead>
+                                <TableHead className="w-[120px]">Hôm nay</TableHead>
+                                <TableHead className="w-[120px]">7 ngày</TableHead>
                                 <TableHead className="w-[100px] text-right">Thao tác</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -545,11 +586,11 @@ export function ProjectsPage() {
                                     <TableCell>
                                         <div className="flex flex-col gap-1 text-xs max-w-[200px]">
                                             <a href={project.sourceFolderLink} target="_blank" className="flex items-center gap-1 text-muted-foreground hover:text-primary truncate">
-                                                <span className="font-semibold">SRC:</span> {project.sourceFolderId}
+                                                <span className="font-semibold">Nguồn:</span> {project.sourceFolderId}
                                                 <ExternalLink className="w-3 h-3" />
                                             </a>
                                             <a href={project.destFolderLink} target="_blank" className="flex items-center gap-1 text-muted-foreground hover:text-primary truncate">
-                                                <span className="font-semibold">DST:</span> {project.destFolderId}
+                                                <span className="font-semibold">Đích:</span> {project.destFolderId}
                                                 <ExternalLink className="w-3 h-3" />
                                             </a>
                                         </div>
@@ -564,11 +605,11 @@ export function ProjectsPage() {
                                             <span className="text-xs text-muted-foreground">-</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">
-                                        {formatDate(project.lastSyncTimestamp)}
+                                    <TableCell className="text-xs">
+                                        {project.stats?.todayFiles || 0} files
                                     </TableCell>
                                     <TableCell className="text-xs">
-                                        {project.filesCount} files
+                                        {project.stats?.last7DaysFiles || 0} files
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
@@ -612,6 +653,62 @@ export function ProjectsPage() {
                     </Table>
                 </div>
             )}
+
+            {/* Sync Result Dialog */}
+            <Dialog open={syncResult.open} onOpenChange={(open) => setSyncResult(prev => ({ ...prev, open }))}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {syncResult.success ? (
+                                <CheckCircle2 className="w-5 h-5 text-green-500" />
+                            ) : (
+                                <XCircle className="w-5 h-5 text-red-500" />
+                            )}
+                            {syncResult.success ? 'Sync hoàn tất' : 'Sync thất bại'}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {syncResult.message}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {syncResult.stats && (
+                        <div className="grid grid-cols-2 gap-4 py-4">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm text-muted-foreground">Files synced</span>
+                                <span className="text-2xl font-bold">{syncResult.stats.filesCount}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm text-muted-foreground">Total Size</span>
+                                <span className="text-2xl font-bold">{formatBytes(syncResult.stats.totalSizeSynced)}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm text-muted-foreground">Errors</span>
+                                <span className={`text-2xl font-bold ${syncResult.stats.failedCount > 0 ? 'text-red-500' : 'text-green-500'}`}>
+                                    {syncResult.stats.failedCount}
+                                </span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-sm text-muted-foreground">Status</span>
+                                <Badge variant={syncResult.stats.status === 'success' ? 'default' : 'destructive'} className="w-fit">
+                                    {syncResult.stats.status}
+                                </Badge>
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setSyncResult(prev => ({ ...prev, open: false }))}>
+                            Đóng
+                        </Button>
+                        <Button onClick={() => {
+                            setSyncResult(prev => ({ ...prev, open: false }));
+                            navigate('/logs');
+                        }}>
+                            Xem chi tiết
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

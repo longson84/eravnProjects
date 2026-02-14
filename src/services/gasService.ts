@@ -163,7 +163,7 @@ export const gasService = {
 
     // Sync
     runSyncAll: () => gasRun<{ success: boolean; message: string }>('runSyncAll'),
-    runSyncProject: (projectId: string) => gasRun<{ success: boolean; message: string }>('runSyncProject', projectId),
+    runSyncProject: (projectId: string) => gasRun<{ success: boolean; message: string; stats?: { filesCount: number; totalSizeSynced: number; failedCount: number; status: string } }>('runSyncProject', projectId),
 
     // Settings
     getSettings: () => gasRun<AppSettings>('getSettings'),

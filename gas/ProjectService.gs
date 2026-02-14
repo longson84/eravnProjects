@@ -111,6 +111,52 @@ var ProjectService = {
   deleteProject: function(id) {
     if (!id) throw new Error('Project ID là bắt buộc');
     return deleteProject(id);
+  },
+
+  /**
+   * Get project statistics for Today and Last 7 Days.
+   * Returns a map: { projectId: { todayFiles: N, last7DaysFiles: M } }
+   */
+  getProjectStatsMap: function() {
+    try {
+      var now = new Date();
+      var todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+      var sevenDaysAgoStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  
+      var recentSessions = firestoreRequest_('POST', ':runQuery', {
+        structuredQuery: {
+          from: [{ collectionId: 'syncSessions' }],
+          where: {
+            fieldFilter: {
+              field: { fieldPath: 'timestamp' },
+              op: 'GREATER_THAN_OR_EQUAL',
+              value: { stringValue: sevenDaysAgoStart },
+            },
+          },
+        },
+      })
+      .filter(function(r) { return r.document; })
+      .map(function(r) { return docToSession_(r.document); });
+  
+      var stats = {};
+  
+      recentSessions.forEach(function(session) {
+        if (!stats[session.projectId]) {
+          stats[session.projectId] = { todayFiles: 0, last7DaysFiles: 0 };
+        }
+  
+        stats[session.projectId].last7DaysFiles += session.filesCount;
+  
+        if (session.timestamp >= todayStart) {
+          stats[session.projectId].todayFiles += session.filesCount;
+        }
+      });
+  
+      return stats;
+    } catch (e) {
+      Logger.log('Error in getProjectStatsMap: ' + e.message);
+      return {};
+    }
   }
 };
 

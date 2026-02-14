@@ -62,8 +62,11 @@ function getDashboardSyncProgress_() {
     .filter(r => r.document)
     .map(r => docToSession_(r.document));
 
-    const todayStats = { files: 0, size: 0, duration: 0, sessions: 0 };
-    const last7DaysStats = { files: 0, size: 0, duration: 0, sessions: 0 };
+    const todayStats = { files: 0, size: 0, duration: 0, sessions: 0, projects: 0 };
+    const last7DaysStats = { files: 0, size: 0, duration: 0, sessions: 0, projects: 0 };
+
+    const todayProjects = new Set();
+    const last7DaysProjects = new Set();
 
     recentSessions.forEach(session => {
       const sessionSize = session.totalSizeSynced || 0;
@@ -74,6 +77,7 @@ function getDashboardSyncProgress_() {
       last7DaysStats.size += sessionSize;
       last7DaysStats.duration += sessionDuration;
       last7DaysStats.sessions++;
+      if (session.projectId) last7DaysProjects.add(session.projectId);
 
       // Aggregate for today
       if (session.timestamp >= todayStart) {
@@ -81,8 +85,12 @@ function getDashboardSyncProgress_() {
         todayStats.size += sessionSize;
         todayStats.duration += sessionDuration;
         todayStats.sessions++;
+        if (session.projectId) todayProjects.add(session.projectId);
       }
     });
+
+    todayStats.projects = todayProjects.size;
+    last7DaysStats.projects = last7DaysProjects.size;
 
     return {
       today: todayStats,

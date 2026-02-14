@@ -46,7 +46,7 @@ export function SyncLogsPage() {
     };
 
     const fmt = (d: string) => new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric', year: '2-digit' });
-    const fmtSize = (b?: number) => { if (!b) return '—'; if (b < 1024) return `${b} B`; if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`; return `${(b / 1048576).toFixed(1)} MB`; };
+    const fmtSize = (b?: number) => { if (!b) return '—'; if (b < 1024) return `${b} B`; if (b < 1048576) return `${(b / 1024).toFixed(0)} KB`; return `${(b / 1048576).toFixed(0)} MB`; };
 
     const statusBadge = (s: string) => {
         if (s === 'success') return <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />Thành công</Badge>;
@@ -186,12 +186,12 @@ export function SyncLogsPage() {
                                                     )}
                                                     {loadingDetails ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" /></div> : fileLogs?.length ? (
                                                         <Table>
-                                                            <TableHeader><TableRow><TableHead>Tên file</TableHead><TableHead>Thư mục</TableHead><TableHead>Kích thước</TableHead><TableHead>Trạng thái</TableHead><TableHead>Created</TableHead><TableHead>Modified</TableHead></TableRow></TableHeader>
+                                                            <TableHeader><TableRow><TableHead>Tên file</TableHead><TableHead>Thư mục</TableHead><TableHead>Size</TableHead><TableHead>Status</TableHead><TableHead>Created</TableHead><TableHead>Modified</TableHead></TableRow></TableHeader>
                                                             <TableBody>{fileLogs.map(log => (
                                                                 <TableRow key={log.id}>
                                                                     <TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" /><span>{log.fileName}</span></div></TableCell>
                                                                     <TableCell className="text-xs text-muted-foreground">{log.sourcePath.replace(log.fileName, '')}</TableCell>
-                                                                    <TableCell className="text-xs"><HardDrive className="w-3 h-3 inline mr-1" />{fmtSize(log.fileSize)}</TableCell>
+                                                                    <TableCell className="text-xs">{fmtSize(log.fileSize)}</TableCell>
                                                                     <TableCell className="text-xs">
                                                                         {log.status === 'success' ? <span className="text-emerald-600 font-medium">Thành công</span> :
                                                                          log.status === 'error' ? <span className="text-destructive font-medium">Lỗi</span> :

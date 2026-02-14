@@ -13,7 +13,6 @@ import {
     Activity,
     AlertTriangle,
     CheckCircle2,
-    Clock,
     FileCheck2,
     FolderSync,
     ScrollText,
@@ -53,9 +52,15 @@ const formatBytes = (bytes: number, decimals = 2): string => {
 };
 
 const formatDuration = (seconds: number): string => {
-    if (seconds < 60) return `${seconds.toFixed(0)}s`;
-    if (seconds < 3600) return `${(seconds / 60).toFixed(1)}m`;
-    return `${(seconds / 3600).toFixed(1)}h`;
+    if (seconds < 60) return `${seconds.toFixed(0)} giây`;
+    if (seconds < 3600) {
+        const m = Math.floor(seconds / 60);
+        return `${m} phút`;
+    }
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    if (m === 0) return `${h} giờ`;
+    return `${h} giờ ${m} phút`;
 };
 
 const formatTime = (timestamp: string): string => {
@@ -207,28 +212,20 @@ export function DashboardPage() {
             bgColor: 'bg-blue-500/10',
         },
         {
-            title: 'Files hôm nay',
-            value: data.syncProgress.today.files.toLocaleString(),
-            subtitle: `${formatBytes(data.syncProgress.today.size)} / ${data.syncProgress.today.sessions} phiên`,
+            title: 'Hoạt động hôm nay',
+            value: `${data.syncProgress.today.files.toLocaleString()} files`,
+            subtitle: `${data.syncProgress.today.projects} dự án • ${formatBytes(data.syncProgress.today.size, 0)} • ${formatDuration(data.syncProgress.today.duration)}`,
             icon: FileCheck2,
             color: 'text-emerald-500',
             bgColor: 'bg-emerald-500/10',
         },
         {
             title: 'Hoạt động 7 ngày',
-            value: data.syncProgress.last7Days.files.toLocaleString(),
-            subtitle: `${formatBytes(data.syncProgress.last7Days.size)} / ${data.syncProgress.last7Days.sessions} phiên`,
+            value: `${data.syncProgress.last7Days.files.toLocaleString()} files`,
+            subtitle: `${data.syncProgress.last7Days.projects} dự án • ${formatBytes(data.syncProgress.last7Days.size, 0)} • ${formatDuration(data.syncProgress.last7Days.duration)}`,
             icon: TrendingUp,
             color: 'text-violet-500',
             bgColor: 'bg-violet-500/10',
-        },
-        {
-            title: 'Thời gian xử lý (hôm nay)',
-            value: formatDuration(data.syncProgress.today.duration),
-            subtitle: `TB ${formatDuration(data.syncProgress.today.duration / (data.syncProgress.today.sessions || 1))} / phiên`,
-            icon: Clock,
-            color: 'text-amber-500',
-            bgColor: 'bg-amber-500/10',
         },
     ];
 
@@ -241,7 +238,7 @@ export function DashboardPage() {
                 </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {statCards.map((card) => <StatCard key={card.title} {...card} />)}
             </div>
 
@@ -297,7 +294,7 @@ export function DashboardPage() {
                                         stroke="hsl(var(--chart-1))"
                                         fillOpacity={1}
                                         fill="url(#colorFiles)"
-                                        name="filesCount"
+                                        name="Số file"
                                         strokeWidth={2}
                                     />
                                     <Area
@@ -306,7 +303,7 @@ export function DashboardPage() {
                                         dataKey="duration"
                                         stroke="hsl(var(--chart-2))"
                                         fill="url(#colorDuration)"
-                                        name="duration"
+                                        name="Thời gian"
                                         strokeWidth={2}
                                     />
                                 </AreaChart>
