@@ -188,9 +188,13 @@ function batchSaveFileLogs(sessionId, fileLogs) {
   var settings = getSettingsFromCache_();
   var projectId = settings.firebaseProjectId || CONFIG.FIRESTORE_PROJECT_ID;
   
-  // Construct Base Path
-  var basePath = CONFIG.FIRESTORE_BASE_URL + projectId + '/databases/(default)/documents';
-  var batchUrl = basePath + ':batchWrite';
+  // Construct Base Path for API Call (Full URL)
+  var dbRoot = CONFIG.FIRESTORE_BASE_URL + projectId + '/databases/(default)';
+  var docRoot = dbRoot + '/documents';
+  var batchUrl = docRoot + ':batchWrite';
+
+  // Construct Relative Path for Payload (Must start with "projects/...")
+  var relativeDocRoot = 'projects/' + projectId + '/databases/(default)/documents';
   
   // Firestore batch write - max 500 per batch (Firestore limit)
   // We use CONFIG.BATCH_SIZE which should be <= 500
@@ -205,7 +209,7 @@ function batchSaveFileLogs(sessionId, fileLogs) {
       log.sessionId = sessionId;
       return {
         update: {
-          name: basePath + '/fileLogs/' + log.id,
+          name: relativeDocRoot + '/fileLogs/' + log.id,
           fields: fileLogToFields_(log),
         },
       };

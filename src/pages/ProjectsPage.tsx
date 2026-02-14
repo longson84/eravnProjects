@@ -57,9 +57,11 @@ import {
 import { useAppContext } from '@/context/AppContext';
 import { gasService } from '@/services/gasService';
 import type { Project } from '@/types/types';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function ProjectsPage() {
     const { state, createProject, updateProject, deleteProject } = useAppContext();
+    const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -170,6 +172,8 @@ export function ProjectsPage() {
         setSyncingId(projectId);
         try {
             await gasService.runSyncProject(projectId);
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+            queryClient.invalidateQueries({ queryKey: ['syncLogs'] });
         } finally {
             setSyncingId(null);
         }

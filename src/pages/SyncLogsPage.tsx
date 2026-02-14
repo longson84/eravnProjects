@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollText, Search, Filter, ChevronDown, ChevronRight, FileText, ExternalLink, CheckCircle2, XCircle, Timer, Clock, HardDrive, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
+import { ScrollText, Search, Filter, ChevronDown, ChevronRight, FileText, CheckCircle2, XCircle, Timer, Clock, HardDrive, Loader2, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -175,14 +175,14 @@ export function SyncLogsPage() {
                                                     )}
                                                     {loadingDetails ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" /></div> : fileLogs?.length ? (
                                                         <Table>
-                                                            <TableHeader><TableRow><TableHead>Tên file</TableHead><TableHead>Đường dẫn</TableHead><TableHead>Kích thước</TableHead><TableHead>Modified</TableHead><TableHead className="text-right">Links</TableHead></TableRow></TableHeader>
+                                                            <TableHeader><TableRow><TableHead>Tên file</TableHead><TableHead>Thư mục</TableHead><TableHead>Kích thước</TableHead><TableHead>Created</TableHead><TableHead>Modified</TableHead></TableRow></TableHeader>
                                                             <TableBody>{fileLogs.map(log => (
                                                                 <TableRow key={log.id}>
                                                                     <TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" /><span className="truncate max-w-[200px]">{log.fileName}</span></div></TableCell>
-                                                                    <TableCell className="text-xs text-muted-foreground">{log.sourcePath}</TableCell>
+                                                                    <TableCell className="text-xs text-muted-foreground">{log.sourcePath.replace(log.fileName, '')}</TableCell>
                                                                     <TableCell className="text-xs"><HardDrive className="w-3 h-3 inline mr-1" />{fmtSize(log.fileSize)}</TableCell>
+                                                                    <TableCell className="text-xs">{fmt(log.createdDate)}</TableCell>
                                                                     <TableCell className="text-xs">{fmt(log.modifiedDate)}</TableCell>
-                                                                    <TableCell className="text-right"><a href={log.sourceLink} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-accent rounded inline-block"><ExternalLink className="w-3.5 h-3.5 text-blue-500" /></a><a href={log.destLink} target="_blank" rel="noopener noreferrer" className="p-1 hover:bg-accent rounded inline-block ml-1"><ExternalLink className="w-3.5 h-3.5 text-emerald-500" /></a></TableCell>
                                                                 </TableRow>
                                                             ))}</TableBody>
                                                         </Table>
