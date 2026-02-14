@@ -118,6 +118,7 @@ function updateSyncSession(sessionId, updates) {
   // Partial update
   var fields = {};
   if (updates.hasOwnProperty('retried')) fields.retried = { booleanValue: updates.retried };
+  if (updates.hasOwnProperty('retriedBy')) fields.retriedBy = { stringValue: updates.retriedBy }; // Add retriedBy
   if (updates.hasOwnProperty('status')) fields.status = { stringValue: updates.status };
   // Add more fields as needed
 
@@ -361,9 +362,11 @@ function docToSession_(doc) {
     executionDurationSeconds: Number(fv_(f.executionDurationSeconds)) || 0,
     status: fv_(f.status),
     filesCount: Number(fv_(f.filesCount)) || 0,
-    totalSizeSynced: Number(fv_(f.totalSizeSynced)) || 0, // Add new field
+    failedFilesCount: Number(fv_(f.failedFilesCount)) || 0, // Add failedFilesCount
+    totalSizeSynced: Number(fv_(f.totalSizeSynced)) || 0, 
     errorMessage: fv_(f.errorMessage) || undefined,
     retried: fv_(f.retried) === true || fv_(f.retried) === 'true',
+    retriedBy: fv_(f.retriedBy) || null, // Add retriedBy
     retryOf: fv_(f.retryOf) || null,
     triggeredBy: fv_(f.triggeredBy) || 'manual'
   };
@@ -378,9 +381,11 @@ function sessionToDoc_(s) {
     executionDurationSeconds: { integerValue: String(s.executionDurationSeconds) },
     status: { stringValue: s.status },
     filesCount: { integerValue: String(s.filesCount) },
+    failedFilesCount: { integerValue: String(s.failedFilesCount || 0) }, // Add failedFilesCount
     retried: { booleanValue: !!s.retried },
     triggeredBy: { stringValue: s.triggeredBy || 'manual' }
   };
+  if (s.retriedBy) fields.retriedBy = { stringValue: s.retriedBy }; // Add retriedBy
   if (s.retryOf) fields.retryOf = { stringValue: s.retryOf };
   if (s.errorMessage) fields.errorMessage = { stringValue: s.errorMessage };
   return { fields: fields };
@@ -396,6 +401,8 @@ function fileLogToFields_(log) {
     createdDate: { stringValue: log.createdDate },
     modifiedDate: { stringValue: log.modifiedDate },
     fileSize: { integerValue: String(log.fileSize || 0) },
+    status: { stringValue: log.status || 'success' },
+    errorMessage: { stringValue: log.errorMessage || '' }
   };
 }
 
@@ -411,6 +418,8 @@ function docToFileLog_(doc) {
     createdDate: fv_(f.createdDate),
     modifiedDate: fv_(f.modifiedDate),
     fileSize: Number(fv_(f.fileSize)) || 0,
+    status: fv_(f.status) || 'success',
+    errorMessage: fv_(f.errorMessage) || ''
   };
 }
 

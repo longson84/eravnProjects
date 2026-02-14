@@ -172,7 +172,7 @@ Lưu ý rằng, một phiên đồng bộ có thể sync nhiều dự án. Chún
 
 ## 9. Sync Logs
 
-Chi tiêt [Sync Log](./synclog_trae.md)
+Chi tiêt [Sync Log](./synclog_trae.md) và [Cơ chế Log theo File & Retry](./synclog_by_files.md)
 
 
 Giao diện này thể hiện danh sách các dự án được sync.
@@ -191,22 +191,25 @@ Bảng log sẽ gồm 2 phần (như hiện tại đang implement): phần trên
 
 - Tên dự án
 - Run ID - đây chính là sync session
+- **Retry ID** - (Mới) ID của phiên chạy retry nếu phiên này đã được retry.
 - Thời gian chạy
-- Số file mới được copy
+- **Files Synced** - (Cập nhật) Số file sync thành công.
+- **Errors** - (Mới) Số file sync thất bại.
 - Dung lượng được copy
 - Tổng thời gian
 - Trạng thái
-- Button Retry (nếu như trạng thái là Lỗi)
+- Button Retry (nếu như trạng thái là Lỗi và chưa được retry)
 
 Khi chúng ta bấm vào mỗi dự án, ở bảng bên dưới sẽ thể hiện chi tiết từng file được sync của dự án đó, trong session đó với các thông tin sau
 - Tên file
 - Dung lượng
 - Folder gốc
-- Trạng thái
+- Trạng thái (Success/Error)
 
-Ở mỗi phần mà trạng thái bị lỗi, Button Retry sẽ active, khi user bấm vào đây, hệ thống sẽ tiến hành sync lại, với duy nhất dự án này. 
+Ở mỗi phần mà trạng thái bị lỗi, Button Retry sẽ active, khi user bấm vào đây, hệ thống sẽ tiến hành sync lại, **chỉ với các file bị lỗi của dự án này**.
 
 Khi sync xong, session mới sẽ được tạo mới như một session độc lập chứ không ghi đè vào session cũ, nghĩa là session cũ vẫn phải ở trạng thái Lỗi để lưu lại lịch sử.
+Session cũ sẽ được cập nhật trường `retriedBy` trỏ tới Run ID của session mới.
 
 Session mới có thể vẫn là một trạng thái Lỗi, hoặc là trạng thái thành công.
 

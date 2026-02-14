@@ -8,7 +8,7 @@
  * Projects sorted by last_sync_timestamp ASC (oldest first)
  */
 function syncAllProjects() {
-  var runId = 'run-' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd-HHmmss');
+  var runId = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyMMdd-HHmmss');
   var projects = ProjectService.getAllProjects();
   var settings = getSettingsFromCache_();
   var results = [];
@@ -59,7 +59,7 @@ function syncProjectById(projectId, options) {
   var project = ProjectService.getProjectById(projectId);
   if (!project) throw new Error('Project not found: ' + projectId);
 
-  var runId = 'run-' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd-HHmmss');
+  var runId = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyMMdd-HHmmss');
   var settings = getSettingsFromCache_();
   var result = syncSingleProject_(project, runId, settings, options);
 
@@ -95,7 +95,8 @@ function syncSingleProject_(project, runId, settings, options) {
     executionDurationSeconds: 0,
     status: 'success',
     filesCount: 0,
-    totalSizeSynced: 0, // Add new field
+    failedFilesCount: 0, // Track failed files
+    totalSizeSynced: 0, 
     triggeredBy: options.triggeredBy || 'manual',
     retryOf: options.retryOf || null
   };
@@ -118,79 +119,9 @@ function syncSingleProject_(project, runId, settings, options) {
 
     // List modified files in this folder
     var files = listModifiedFiles(sourceFolderId, sinceTimestamp);
-
-    for (var i = 0; i < files.length; i++) {
-      if (isInterrupted) return;
-
-      // Check cutoff after each file
-      if (new Date().getTime() - startTime > cutoffMs) {
-        isInterrupted = true;
-        session.status = 'interrupted';
-        session.errorMessage = 'Cutoff timeout: đã vượt quá ' + settings.syncCutoffSeconds + ' giây. Safe exit.';
-        return;
-      }
-
-      var file = files[i];
-
-      // Skip folders (handled recursively below)
-      if (file.mimeType === CONFIG.FOLDER_MIME_TYPE) continue;
-
-      // Check for existing files with same name in destination to prevent duplicates
-      var existingFiles = findFilesByName(file.name, destFolderId);
-      var destFileName = file.name;
-
-      if (existingFiles.length > 0) {
-        // Sort existing by modifiedTime desc (newest first)
-        existingFiles.sort(function(a, b) {
-          return new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime();
-        });
-
-        var latestExisting = existingFiles[0];
-        var sourceTime = new Date(file.modifiedTime).getTime();
-        var destTime = new Date(latestExisting.modifiedTime).getTime();
-
-        // Strategy: Versioning with Timestamp Suffix
-        // If source is strictly newer than destination, we copy the new file BUT rename it.
-        // We do NOT delete the old file.
-        // Format: OriginalName_vYYMMDDHHmm.ext
-        
-        if (sourceTime > destTime) {
-          // Append timestamp to filename
-          var timestamp = formatTimestampForFilename(new Date());
-          var nameParts = file.name.lastIndexOf('.');
-          
-          if (nameParts !== -1) {
-             var name = file.name.substring(0, nameParts);
-             var ext = file.name.substring(nameParts);
-             destFileName = name + '_v' + timestamp + ext;
-          } else {
-             destFileName = file.name + '_v' + timestamp;
-          }
-          
-          Logger.log('Newer version detected. Saving as: ' + destFileName);
-        } else {
-          // Source is older or same age -> Skip
-          continue;
-        }
-      }
-
-      // Copy file
-      var copiedFile = copyFileToDest(file.id, destFolderId, destFileName);
-      var fileSize = Number(file.size) || 0;
-
-      fileLogsBatch.push({
-        fileName: file.name,
-        sourceLink: 'https://drive.google.com/file/d/' + file.id + '/view',
-        destLink: copiedFile.webViewLink || 'https://drive.google.com/file/d/' + copiedFile.id + '/view',
-        sourcePath: pathPrefix + file.name,
-        createdDate: file.createdTime || getCurrentTimestamp(),
-        modifiedDate: file.modifiedTime || getCurrentTimestamp(),
-        fileSize: fileSize,
-      });
-
-      session.filesCount++;
-      session.totalSizeSynced += fileSize;
-    }
+    
+    // Process files
+    processFiles(files, destFolderId, pathPrefix);
 
     // Recurse into subfolders
     var subFolders = listSubFolders(sourceFolderId);
@@ -203,14 +134,132 @@ function syncSingleProject_(project, runId, settings, options) {
     }
   }
 
-  // Execute sync
-  syncFolder(project.sourceFolderId, project.destFolderId, '/');
+  // Helper to process a batch of files
+  function processFiles(files, destFolderId, pathPrefix) {
+    for (var i = 0; i < files.length; i++) {
+      if (isInterrupted) return;
+
+      // Check cutoff after each file
+      if (new Date().getTime() - startTime > cutoffMs) {
+        isInterrupted = true;
+        session.status = 'interrupted';
+        session.errorMessage = 'Cutoff timeout: đã vượt quá ' + settings.syncCutoffSeconds + ' giây. Safe exit.';
+        return;
+      }
+
+      var file = files[i];
+      var fileLogEntry = {
+        fileName: file.name,
+        sourceLink: 'https://drive.google.com/file/d/' + file.id + '/view',
+        destLink: '',
+        sourcePath: pathPrefix + file.name,
+        createdDate: file.createdTime || getCurrentTimestamp(),
+        modifiedDate: file.modifiedTime || getCurrentTimestamp(),
+        fileSize: 0,
+        status: 'success',
+        errorMessage: ''
+      };
+
+      try {
+        // Skip folders (handled recursively)
+        if (file.mimeType === CONFIG.FOLDER_MIME_TYPE) continue;
+
+        // Check for existing files with same name in destination
+        var destFileName = file.name;
+        
+        if (!options.retryFileIds) {
+            var existingFiles = findFilesByName(file.name, destFolderId);
+            if (existingFiles.length > 0) {
+                existingFiles.sort(function(a, b) {
+                return new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime();
+                });
+
+                var latestExisting = existingFiles[0];
+                var sourceTime = new Date(file.modifiedTime).getTime();
+                var destTime = new Date(latestExisting.modifiedTime).getTime();
+
+                if (sourceTime > destTime) {
+                    var timestamp = formatTimestampForFilename(new Date());
+                    var nameParts = file.name.lastIndexOf('.');
+                    if (nameParts !== -1) {
+                        var name = file.name.substring(0, nameParts);
+                        var ext = file.name.substring(nameParts);
+                        destFileName = name + '_v' + timestamp + ext;
+                    } else {
+                        destFileName = file.name + '_v' + timestamp;
+                    }
+                } else {
+                    continue; // Skip if source is older
+                }
+            }
+        }
+
+        // Copy file
+        var copiedFile = copyFileToDest(file.id, destFolderId, destFileName);
+        var fileSize = Number(file.size) || 0;
+
+        fileLogEntry.destLink = copiedFile.webViewLink || 'https://drive.google.com/file/d/' + copiedFile.id + '/view';
+        fileLogEntry.fileSize = fileSize;
+        
+        session.filesCount++;
+        session.totalSizeSynced += fileSize;
+
+      } catch (e) {
+        Logger.log('Error syncing file ' + file.name + ': ' + e.message);
+        fileLogEntry.status = 'error';
+        fileLogEntry.errorMessage = e.message;
+        session.failedFilesCount++;
+        
+        // If file not found (404), mark as skipped/resolved
+        if (e.message.indexOf('File not found') !== -1 || e.message.indexOf('404') !== -1) {
+             fileLogEntry.status = 'skipped';
+             fileLogEntry.errorMessage = 'Source file not found (deleted)';
+        } else {
+             session.status = 'warning'; 
+        }
+      }
+      
+      fileLogsBatch.push(fileLogEntry);
+    }
+  }
+
+  // EXECUTION LOGIC
+  if (options.retryFileIds && options.retryFileIds.length > 0) {
+      // RETRY MODE
+      Logger.log('Running in RETRY MODE for ' + options.retryFileIds.length + ' files.');
+      
+      var retryFiles = [];
+      for(var k=0; k<options.retryFileIds.length; k++) {
+          try {
+              var fId = options.retryFileIds[k];
+              var f = Drive.Files.get(fId, { fields: CONFIG.DRIVE_FIELDS });
+              retryFiles.push(f);
+          } catch(e) {
+              fileLogsBatch.push({
+                  fileName: 'Unknown (' + options.retryFileIds[k] + ')',
+                  sourceLink: '',
+                  destLink: '',
+                  sourcePath: 'Unknown',
+                  createdDate: getCurrentTimestamp(),
+                  modifiedDate: getCurrentTimestamp(),
+                  fileSize: 0,
+                  status: 'skipped',
+                  errorMessage: 'Source file deleted before retry'
+              });
+          }
+      }
+      processFiles(retryFiles, project.destFolderId, '/Retry/');
+      
+  } else {
+      // NORMAL MODE
+      syncFolder(project.sourceFolderId, project.destFolderId, '/');
+  }
 
   // Calculate duration
   session.executionDurationSeconds = Math.round((new Date().getTime() - startTime) / 1000);
 
-  // Save session to Firestore ONLY when meaningful (has files, error, or interrupted)
-  if (session.filesCount > 0 || session.status !== 'success') {
+  // Save session to Firestore
+  if (session.filesCount > 0 || session.status !== 'success' || session.failedFilesCount > 0) {
     saveSyncSession(session);
   }
 

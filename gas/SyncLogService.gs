@@ -66,9 +66,11 @@ var SyncLogService = {
             duration: data.executionDurationSeconds,
             status: data.status,
             filesCount: data.filesCount,
+            failedCount: data.failedFilesCount || 0, // Added failed count
             totalSize: data.totalSizeSynced,
             error: data.errorMessage,
             retried: data.retried || false,
+            retriedBy: data.retriedBy || null, // Added retriedBy ID
             retryOf: data.retryOf || null,
             triggeredBy: data.triggeredBy || 'manual'
         });
@@ -101,29 +103,62 @@ var SyncLogService = {
         return false; // Already retried
       }
       
-      // Mark old session as retried
-      updateSyncSession(sessionId, { retried: true });
+      // NEW LOGIC: Fetch failed files from this session
+      var failedFileIds = [];
+      try {
+        var fileLogs = getFileLogsBySession(sessionId);
+        if (fileLogs && fileLogs.length > 0) {
+           failedFileIds = fileLogs.filter(function(log) {
+             return log.status === 'error';
+           }).map(function(log) {
+             // Extract File ID from sourceLink
+             // Link format: https://drive.google.com/file/d/FILE_ID/view
+             var match = log.sourceLink.match(/\/d\/([a-zA-Z0-9_-]+)/);
+             return match ? match[1] : null;
+           }).filter(function(id) { return id !== null; });
+        }
+      } catch (err) {
+        Logger.log('Error fetching failed files for retry: ' + err);
+      }
       
-      // Trigger new sync
-      // Using SyncService.syncProjectById as identified in the codebase
-      if (typeof SyncService !== 'undefined' && SyncService.syncProjectById) {
-         SyncService.syncProjectById(projectId, {
-           triggeredBy: 'retry',
-           retryOf: sessionId
-         });
+      var syncOptions = {
+         triggeredBy: 'retry',
+         retryOf: sessionId
+      };
+      
+      // If we found specific failed files, pass them to the sync service
+      if (failedFileIds.length > 0) {
+         syncOptions.retryFileIds = failedFileIds;
+         Logger.log('Retrying ' + failedFileIds.length + ' specific failed files.');
       } else {
-         throw new Error('SyncService not available for retry');
+         Logger.log('No specific failed files found (or full retry needed). Running standard sync.');
+      }
+
+      var result;
+      // Trigger new sync
+      if (typeof syncProjectById === 'function') {
+         result = syncProjectById(projectId, syncOptions);
+      } else if (typeof SyncService !== 'undefined' && SyncService.syncProjectById) {
+         result = SyncService.syncProjectById(projectId, syncOptions);
+      } else {
+         // Direct call fallback if in same scope
+         try {
+            result = syncProjectById(projectId, syncOptions);
+         } catch (e) {
+            throw new Error('SyncService not available: ' + e.message);
+         }
       }
      
+      // Mark old session as retried and link to new session
+      var updateData = { retried: true };
+      if (result && result.runId) {
+          updateData.retriedBy = result.runId;
+      }
+      updateSyncSession(sessionId, updateData);
+
       return true;
     } catch (e) {
       Logger.log('Retry failed: ' + e);
-      // Revert retried status if fail
-      try {
-        updateSyncSession(sessionId, { retried: false });
-      } catch (err) {
-        Logger.log('Failed to revert session status: ' + err);
-      }
       throw e;
     }
   }

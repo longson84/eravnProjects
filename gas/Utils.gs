@@ -48,7 +48,7 @@ function extractFolderIdFromLink(link) {
  */
 function formatTimestampForFilename(dateObj) {
   var date = new Date(dateObj);
-  return Utilities.formatDate(date, 'Asia/Ho_Chi_Minh', 'yyMMddHHmm');
+  return Utilities.formatDate(date, 'Asia/Ho_Chi_Minh', 'yyMMdd_HHmmss');
 }
 
 /**

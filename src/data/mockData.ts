@@ -201,6 +201,7 @@ export const mockFileLogs: FileLog[] = [
         createdDate: '2026-02-10T14:00:00Z',
         modifiedDate: '2026-02-11T08:00:00Z',
         fileSize: 2456000,
+        status: 'success',
     },
     {
         id: 'fl-002',
@@ -212,6 +213,7 @@ export const mockFileLogs: FileLog[] = [
         createdDate: '2026-02-09T10:30:00Z',
         modifiedDate: '2026-02-10T16:45:00Z',
         fileSize: 15800000,
+        status: 'success',
     },
     {
         id: 'fl-003',
@@ -223,6 +225,7 @@ export const mockFileLogs: FileLog[] = [
         createdDate: '2026-02-11T07:00:00Z',
         modifiedDate: '2026-02-11T07:30:00Z',
         fileSize: 854000,
+        status: 'success',
     },
     {
         id: 'fl-004',
@@ -234,6 +237,7 @@ export const mockFileLogs: FileLog[] = [
         createdDate: '2026-02-10T09:00:00Z',
         modifiedDate: '2026-02-11T05:30:00Z',
         fileSize: 45200000,
+        status: 'success',
     },
     {
         id: 'fl-005',
@@ -245,6 +249,7 @@ export const mockFileLogs: FileLog[] = [
         createdDate: '2026-02-08T15:00:00Z',
         modifiedDate: '2026-02-10T11:20:00Z',
         fileSize: 3200000,
+        status: 'success',
     },
 ];
 

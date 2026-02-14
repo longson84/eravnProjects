@@ -45,7 +45,7 @@ export function SyncLogsPage() {
         retryMutation.mutate({ sessionId: session.sessionId, projectId: session.projectId });
     };
 
-    const fmt = (d: string) => new Date(d).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const fmt = (d: string) => new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric', year: '2-digit' });
     const fmtSize = (b?: number) => { if (!b) return '—'; if (b < 1024) return `${b} B`; if (b < 1048576) return `${(b / 1024).toFixed(1)} KB`; return `${(b / 1048576).toFixed(1)} MB`; };
 
     const statusBadge = (s: string) => {
@@ -116,17 +116,19 @@ export function SyncLogsPage() {
                                 <TableHead>Dự án</TableHead>
                                 <TableHead>Run ID</TableHead>
                                 <TableHead>Thời gian</TableHead>
-                                <TableHead className="text-center">Files</TableHead>
+                                <TableHead className="text-center">Files Synced</TableHead>
+                                <TableHead className="text-center">Errors</TableHead>
                                 <TableHead className="text-center">Duration</TableHead>
                                 <TableHead>Trạng thái</TableHead>
+                                <TableHead>Retry ID</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
-                                <TableRow><TableCell colSpan={8} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={10} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></TableCell></TableRow>
                             ) : sessions.length === 0 ? (
-                                <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground">Không tìm thấy phiên nào</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={10} className="text-center py-12 text-muted-foreground">Không tìm thấy phiên nào</TableCell></TableRow>
                             ) : sessions.map((session) => (
                                 <>
                                     <TableRow key={`${session.sessionId}-${session.projectId}`} className="cursor-pointer hover:bg-muted/50" onClick={() => handleExpand(session.sessionId, session.projectId)}>
@@ -140,13 +142,22 @@ export function SyncLogsPage() {
                                             {session.retryOf && <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">↳ of {session.retryOf.slice(0, 8)}...</div>}
                                         </TableCell>
                                         <TableCell className="text-sm">{fmt(session.startTime)}</TableCell>
-                                        <TableCell className="text-center">{session.filesCount}</TableCell>
+                                        <TableCell className="text-center font-medium text-emerald-600">{session.filesCount}</TableCell>
+                                        <TableCell className="text-center font-medium text-destructive">{session.failedCount || 0}</TableCell>
                                         <TableCell className="text-center">{session.duration}s</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 {statusBadge(session.status)}
                                                 {session.retried && <Badge variant="secondary" className="text-[10px] h-5">Retried</Badge>}
                                             </div>
+                                        </TableCell>
+                                        <TableCell className="text-xs font-mono text-muted-foreground">
+                                            {session.retriedBy ? (
+                                                <div className="flex items-center gap-1 text-blue-600">
+                                                    <RefreshCw className="w-3 h-3" />
+                                                    {session.retriedBy}
+                                                </div>
+                                            ) : '-'}
                                         </TableCell>
                                         <TableCell className="text-right">
                                             {session.status === 'error' && !session.retried && (
@@ -165,7 +176,7 @@ export function SyncLogsPage() {
                                     </TableRow>
                                     {expandedSession?.sessionId === session.sessionId && expandedSession?.projectId === session.projectId && (
                                         <TableRow>
-                                            <TableCell colSpan={8} className="p-0 bg-muted/10">
+                                            <TableCell colSpan={10} className="p-0 bg-muted/10">
                                                 <div className="p-4 border-l-2 border-primary/20 ml-4 my-2">
                                                     <h3 className="font-semibold mb-3 flex items-center gap-2"><FileText className="w-4 h-4" />Chi tiết file</h3>
                                                     {session.error && (
@@ -175,12 +186,17 @@ export function SyncLogsPage() {
                                                     )}
                                                     {loadingDetails ? <div className="flex justify-center py-6"><Loader2 className="w-5 h-5 animate-spin" /></div> : fileLogs?.length ? (
                                                         <Table>
-                                                            <TableHeader><TableRow><TableHead>Tên file</TableHead><TableHead>Thư mục</TableHead><TableHead>Kích thước</TableHead><TableHead>Created</TableHead><TableHead>Modified</TableHead></TableRow></TableHeader>
+                                                            <TableHeader><TableRow><TableHead>Tên file</TableHead><TableHead>Thư mục</TableHead><TableHead>Kích thước</TableHead><TableHead>Trạng thái</TableHead><TableHead>Created</TableHead><TableHead>Modified</TableHead></TableRow></TableHeader>
                                                             <TableBody>{fileLogs.map(log => (
                                                                 <TableRow key={log.id}>
-                                                                    <TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" /><span className="truncate max-w-[200px]">{log.fileName}</span></div></TableCell>
+                                                                    <TableCell className="font-medium"><div className="flex items-center gap-2"><FileText className="w-4 h-4 text-muted-foreground" /><span>{log.fileName}</span></div></TableCell>
                                                                     <TableCell className="text-xs text-muted-foreground">{log.sourcePath.replace(log.fileName, '')}</TableCell>
                                                                     <TableCell className="text-xs"><HardDrive className="w-3 h-3 inline mr-1" />{fmtSize(log.fileSize)}</TableCell>
+                                                                    <TableCell className="text-xs">
+                                                                        {log.status === 'success' ? <span className="text-emerald-600 font-medium">Thành công</span> :
+                                                                         log.status === 'error' ? <span className="text-destructive font-medium">Lỗi</span> :
+                                                                         <span className="text-muted-foreground">{log.status}</span>}
+                                                                    </TableCell>
                                                                     <TableCell className="text-xs">{fmt(log.createdDate)}</TableCell>
                                                                     <TableCell className="text-xs">{fmt(log.modifiedDate)}</TableCell>
                                                                 </TableRow>

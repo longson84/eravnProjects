@@ -187,8 +187,14 @@ export function ProjectsPage() {
     const formatDate = (dateStr: string | null) => {
         if (!dateStr) return 'Chưa có';
         return new Date(dateStr).toLocaleString('vi-VN', {
-            day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit',
+            day: 'numeric', month: 'numeric', year: '2-digit'
+        });
+    };
+
+    const formatDateShort = (dateStr: string) => {
+        return new Date(dateStr).toLocaleDateString('vi-VN', {
+            day: 'numeric', month: 'numeric', year: '2-digit'
         });
     };
 
@@ -430,7 +436,7 @@ export function ProjectsPage() {
                                             <span className="text-muted-foreground w-10 shrink-0">START</span>
                                             <div className="flex items-center gap-1 bg-muted/50 px-1.5 py-0.5 rounded">
                                                 <Calendar className="w-3 h-3" />
-                                                <span>{project.syncStartDate}</span>
+                                                <span>{formatDateShort(project.syncStartDate)}</span>
                                             </div>
                                         </div>
                                     )}
@@ -536,7 +542,7 @@ export function ProjectsPage() {
                                         {project.syncStartDate ? (
                                             <div className="text-xs text-muted-foreground flex items-center gap-1">
                                                 <Calendar className="w-3 h-3" />
-                                                {project.syncStartDate}
+                                                {formatDateShort(project.syncStartDate)}
                                             </div>
                                         ) : (
                                             <span className="text-xs text-muted-foreground">-</span>

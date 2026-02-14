@@ -49,9 +49,11 @@ export interface SyncLogEntry {
     duration: number;
     status: 'success' | 'interrupted' | 'error';
     filesCount: number;
+    failedCount?: number; // Added failed files count
     totalSize: number;
     error?: string;
     retried?: boolean;
+    retriedBy?: string;   // ID of the session that retried this one
     retryOf?: string;
     triggeredBy?: 'manual' | 'scheduled' | 'retry' | 'webhook';
 }
@@ -81,6 +83,8 @@ export interface FileLog {
     createdDate: string;
     modifiedDate: string;
     fileSize?: number;
+    status: 'success' | 'error' | 'skipped'; // Add status field
+    errorMessage?: string; // Add error message for failed files
 }
 
 /** Global app settings */
