@@ -70,6 +70,12 @@ Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ c
 
 - Sử dụng Query: `(modifiedTime > last_sync_timestamp OR createdTime > last_sync_timestamp) AND 'source_id' in parents`.
 - **Recursive Scan:** Duyệt từng tầng thư mục. Nếu thư mục con có file thay đổi, hệ thống tạo thư mục tương ứng tại Đích trước khi copy.
+- **Xử lý trùng lặp file (File Versioning):**
+    - Khi copy file mới từ Source sang Destination, nếu phát hiện file cùng tên đã tồn tại:
+    - **Không ghi đè (Overwrite)** và **Không xóa (Delete)** file cũ.
+    - File mới sẽ được đổi tên kèm timestamp suffix để bảo tồn lịch sử.
+    - Định dạng đổi tên: `OriginalName_vYYMMDDHHmm.ext` (Ví dụ: `BaoCao_v2602141358.pdf`).
+    - Logic này áp dụng khi `source_modified_time > destination_modified_time`. Nếu file nguồn cũ hơn hoặc bằng file đích, bỏ qua không copy.
 
 ### 4.2. Quản lý Hàng đợi & Timeout
 

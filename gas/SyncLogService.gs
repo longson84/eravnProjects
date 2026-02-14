@@ -107,7 +107,10 @@ var SyncLogService = {
       // Trigger new sync
       // Using SyncService.syncProjectById as identified in the codebase
       if (typeof SyncService !== 'undefined' && SyncService.syncProjectById) {
-         SyncService.syncProjectById(projectId);
+         SyncService.syncProjectById(projectId, {
+           triggeredBy: 'retry',
+           retryOf: sessionId
+         });
       } else {
          throw new Error('SyncService not available for retry');
       }

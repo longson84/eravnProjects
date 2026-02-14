@@ -55,13 +55,13 @@ function syncAllProjects() {
 /**
  * Run sync for a single project
  */
-function syncProjectById(projectId) {
+function syncProjectById(projectId, options) {
   var project = ProjectService.getProjectById(projectId);
   if (!project) throw new Error('Project not found: ' + projectId);
 
   var runId = 'run-' + Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyyyMMdd-HHmmss');
   var settings = getSettingsFromCache_();
-  var result = syncSingleProject_(project, runId, settings);
+  var result = syncSingleProject_(project, runId, settings, options);
 
   if (settings.enableNotifications && settings.webhookUrl) {
     sendSyncSummary([result], runId);
@@ -74,7 +74,8 @@ function syncProjectById(projectId) {
  * Core sync logic for a single project
  * Implements Time-Snapshot Sync with recursive folder scanning
  */
-function syncSingleProject_(project, runId, settings) {
+function syncSingleProject_(project, runId, settings, options) {
+  options = options || {};
   var startTime = new Date().getTime();
   var cutoffMs = (settings.syncCutoffSeconds || CONFIG.DEFAULT_CUTOFF_SECONDS) * 1000;
   
@@ -95,6 +96,8 @@ function syncSingleProject_(project, runId, settings) {
     status: 'success',
     filesCount: 0,
     totalSizeSynced: 0, // Add new field
+    triggeredBy: options.triggeredBy || 'manual',
+    retryOf: options.retryOf || null
   };
 
   var fileLogsBatch = [];
@@ -132,8 +135,47 @@ function syncSingleProject_(project, runId, settings) {
       // Skip folders (handled recursively below)
       if (file.mimeType === CONFIG.FOLDER_MIME_TYPE) continue;
 
+      // Check for existing files with same name in destination to prevent duplicates
+      var existingFiles = findFilesByName(file.name, destFolderId);
+      var destFileName = file.name;
+
+      if (existingFiles.length > 0) {
+        // Sort existing by modifiedTime desc (newest first)
+        existingFiles.sort(function(a, b) {
+          return new Date(b.modifiedTime).getTime() - new Date(a.modifiedTime).getTime();
+        });
+
+        var latestExisting = existingFiles[0];
+        var sourceTime = new Date(file.modifiedTime).getTime();
+        var destTime = new Date(latestExisting.modifiedTime).getTime();
+
+        // Strategy: Versioning with Timestamp Suffix
+        // If source is strictly newer than destination, we copy the new file BUT rename it.
+        // We do NOT delete the old file.
+        // Format: OriginalName_vYYMMDDHHmm.ext
+        
+        if (sourceTime > destTime) {
+          // Append timestamp to filename
+          var timestamp = formatTimestampForFilename(new Date());
+          var nameParts = file.name.lastIndexOf('.');
+          
+          if (nameParts !== -1) {
+             var name = file.name.substring(0, nameParts);
+             var ext = file.name.substring(nameParts);
+             destFileName = name + '_v' + timestamp + ext;
+          } else {
+             destFileName = file.name + '_v' + timestamp;
+          }
+          
+          Logger.log('Newer version detected. Saving as: ' + destFileName);
+        } else {
+          // Source is older or same age -> Skip
+          continue;
+        }
+      }
+
       // Copy file
-      var copiedFile = copyFileToDest(file.id, destFolderId, file.name);
+      var copiedFile = copyFileToDest(file.id, destFolderId, destFileName);
       var fileSize = Number(file.size) || 0;
 
       fileLogsBatch.push({
@@ -177,7 +219,15 @@ function syncSingleProject_(project, runId, settings) {
 
   // Batch save file logs
   if (fileLogsBatch.length > 0) {
-    batchSaveFileLogs(session.id, fileLogsBatch);
+    Logger.log('Saving ' + fileLogsBatch.length + ' file logs for session ' + session.id);
+    try {
+      batchSaveFileLogs(session.id, fileLogsBatch);
+      Logger.log('File logs saved successfully.');
+    } catch (e) {
+      Logger.log('FAILED to save file logs: ' + e.message);
+    }
+  } else {
+    Logger.log('No files synced, skipping log save.');
   }
 
   // Update project metadata
@@ -189,7 +239,14 @@ function syncSingleProject_(project, runId, settings) {
   if (project.status === 'error' && session.status !== 'error') {
     project.status = 'active';
   }
-  ProjectService.updateProject(project);
+  
+  try {
+    Logger.log('Updating project metadata: ' + project.name + ' Status: ' + project.lastSyncStatus + ' Time: ' + project.lastSyncTimestamp);
+    ProjectService.updateProject(project);
+  } catch (e) {
+    Logger.log('Failed to update project metadata for ' + project.name + ': ' + e.message);
+    // Don't throw, let the function return the session result
+  }
 
   Logger.log('Synced ' + session.filesCount + ' files for ' + project.name + ' in ' + session.executionDurationSeconds + 's [' + session.status + ']');
 

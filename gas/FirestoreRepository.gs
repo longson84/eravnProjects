@@ -185,22 +185,68 @@ function getRecentSyncSessions(limit) {
 // ==========================================
 
 function batchSaveFileLogs(sessionId, fileLogs) {
-  // Firestore batch write - max 500 per batch
-  var writes = fileLogs.map(function(log) {
-    log.id = log.id || generateId();
-    log.sessionId = sessionId;
-    return {
-      update: {
-        name: getFirestoreUrl() + 'fileLogs/' + log.id,
-        fields: fileLogToFields_(log),
-      },
-    };
-  });
+  var settings = getSettingsFromCache_();
+  var projectId = settings.firebaseProjectId || CONFIG.FIRESTORE_PROJECT_ID;
+  
+  // Construct Base Path
+  var basePath = CONFIG.FIRESTORE_BASE_URL + projectId + '/databases/(default)/documents';
+  var batchUrl = basePath + ':batchWrite';
+  
+  // Firestore batch write - max 500 per batch (Firestore limit)
+  // We use CONFIG.BATCH_SIZE which should be <= 500
+  
+  // Split into batches FIRST
+  for (var i = 0; i < fileLogs.length; i += CONFIG.BATCH_SIZE) {
+    var chunk = fileLogs.slice(i, i + CONFIG.BATCH_SIZE);
+    
+    // Map chunk to Firestore Write operations
+    var writes = chunk.map(function(log) {
+      log.id = log.id || generateId();
+      log.sessionId = sessionId;
+      return {
+        update: {
+          name: basePath + '/fileLogs/' + log.id,
+          fields: fileLogToFields_(log),
+        },
+      };
+    });
 
-  // Split into batches of CONFIG.BATCH_SIZE
-  for (var i = 0; i < writes.length; i += CONFIG.BATCH_SIZE) {
-    var batch = writes.slice(i, i + CONFIG.BATCH_SIZE);
-    firestoreRequest_('POST', ':batchWrite', { writes: batch });
+    // Send Batch Request with Retry Logic
+    var maxRetries = CONFIG.MAX_RETRIES;
+    var success = false;
+    
+    for (var attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        var payload = { writes: writes };
+        var options = {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+          contentType: 'application/json',
+          payload: JSON.stringify(payload),
+          muteHttpExceptions: true,
+        };
+
+        var response = UrlFetchApp.fetch(batchUrl, options);
+        var code = response.getResponseCode();
+        
+        if (code < 400) {
+          success = true;
+          break; 
+        } else {
+           Logger.log('Firestore Batch Save Error [' + code + ']: ' + response.getContentText());
+           // Retry only on transient errors
+           if (code === 429 || code === 500 || code === 503) {
+             exponentialBackoff(attempt);
+           } else {
+             throw new Error('Batch save failed with code ' + code + ': ' + response.getContentText());
+           }
+        }
+      } catch (e) {
+        Logger.log('Batch save exception (Attempt ' + (attempt + 1) + '): ' + e.message);
+        if (attempt === maxRetries) throw e;
+        exponentialBackoff(attempt);
+      }
+    }
   }
 }
 

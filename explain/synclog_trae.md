@@ -32,9 +32,18 @@ Tách logic xử lý Log ra khỏi Core Sync Logic để đảm bảo code gọn
     *   **Logic**:
         *   Tìm session cũ trong DB.
         *   Kiểm tra: Nếu đã retry rồi (`retried: true`) -> Từ chối (hoặc trả về link session mới).
-        *   Update session cũ: Đặt `retried: true` và lưu `retrySessionId`.
-        *   Gọi lại hàm `syncProject_` (từ `SyncService`) để chạy sync ngay lập tức cho project đó.
-        *   Tạo session mới với `triggeredBy: 'retry'`, `retryOf: sessionId`.
+        *   Update session cũ: Đặt `retried: true`.
+        *   Gọi lại hàm `syncProject_` (thông qua `SyncService.syncProjectById`) với tham số mở rộng:
+            ```javascript
+            SyncService.syncProjectById(projectId, {
+              triggeredBy: 'retry',
+              retryOf: sessionId // ID của session gốc
+            });
+            ```
+        *   Hệ thống sẽ tạo session mới với:
+            *   `triggeredBy: 'retry'`
+            *   `retryOf: sessionId`
+            *   Logic sync vẫn áp dụng bình thường (Time-Snapshot Sync).
 
 ## 2. Kiến trúc Frontend (React)
 

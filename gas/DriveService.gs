@@ -126,6 +126,36 @@ function findOrCreateFolder(folderName, parentFolderId) {
 }
 
 /**
+ * Find files by name in a folder
+ * @param {string} fileName
+ * @param {string} parentFolderId
+ * @returns {Array} Array of file objects
+ */
+function findFilesByName(fileName, parentFolderId) {
+  var query = "name = '" + fileName.replace(/'/g, "\\'") + "' and '" + parentFolderId + "' in parents and trashed = false";
+  
+  return retryDriveCall_(function() {
+    var response = Drive.Files.list({
+      q: query,
+      fields: CONFIG.DRIVE_FIELDS,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+    return response.files || [];
+  });
+}
+
+/**
+ * Trash a file (Soft delete)
+ * @param {string} fileId
+ */
+function trashFile(fileId) {
+  return retryDriveCall_(function() {
+    Drive.Files.update({ trashed: true }, fileId, { supportsAllDrives: true });
+  });
+}
+
+/**
  * Retry wrapper for Drive API calls (handles 429 errors)
  * @param {Function} fn - Function to execute
  * @returns {*} Result of the function
