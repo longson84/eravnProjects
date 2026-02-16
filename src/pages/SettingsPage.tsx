@@ -50,10 +50,17 @@ export function SettingsPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
+            // Validate schedule minutes (min 5)
+            let finalMinutes = scheduleMinutes;
+            if (finalMinutes < 5) {
+                finalMinutes = 5;
+                setScheduleMinutes(5);
+            }
+
             // Update form with latest minutes value converted to cron
             const updatedForm = {
                 ...form,
-                defaultScheduleCron: minutesToCron(scheduleMinutes)
+                defaultScheduleCron: minutesToCron(finalMinutes)
             };
             await updateSettings(updatedForm);
             setSaved(true);
@@ -63,7 +70,7 @@ export function SettingsPage() {
 
     const handleReset = () => setForm({ ...state.settings });
 
-    const update = (key: keyof AppSettings, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+    const update = (key: keyof AppSettings, value: string | number | boolean) => setForm(prev => ({ ...prev, [key]: value }));
 
     const handleResetDatabase = async () => {
         if (resetConfirmText !== 'I understand') return;
@@ -116,7 +123,7 @@ export function SettingsPage() {
                             <Input 
                                 id="schedule" 
                                 type="number" 
-                                min="1"
+                                min="5"
                                 value={scheduleMinutes} 
                                 onChange={e => {
                                     const val = Number(e.target.value);
@@ -125,9 +132,22 @@ export function SettingsPage() {
                                 }} 
                             />
                             <p className="text-xs text-muted-foreground">
-                                Chu kỳ chạy đồng bộ (tính bằng phút). 
+                                Chu kỳ chạy đồng bộ (tính bằng phút, tối thiểu 5 phút). 
                                 {scheduleMinutes >= 60 && ` (~${(scheduleMinutes / 60).toFixed(1)} giờ)`}
                             </p>
+                        </div>
+                        <Separator />
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <Label>Tự động chạy theo lịch</Label>
+                                <p className="text-xs text-muted-foreground mt-0.5">
+                                    Khi bật, trigger thời gian sẽ tự động chạy Sync All theo chu kỳ trên.
+                                </p>
+                            </div>
+                            <Switch
+                                checked={form.enableAutoSchedule ?? true}
+                                onCheckedChange={v => update('enableAutoSchedule', v)}
+                            />
                         </div>
                         <Separator />
                         <div className="grid gap-2">

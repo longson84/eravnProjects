@@ -12,9 +12,6 @@ Cập nhật schema của `SyncSession` để lưu trữ thông tin chi tiết h
 |-------|------|-------------|
 | `filesCount` | Number | Số lượng file đồng bộ **thành công**. |
 | `failedFilesCount` | Number | **(Mới)** Số lượng file đồng bộ **thất bại**. |
-| `retried` | Boolean | Đánh dấu session này đã được retry hay chưa. |
-| `retriedBy` | String | **(Mới)** ID của session (Run ID) đã thực hiện việc retry cho session này. |
-| `retryOf` | String | ID của session gốc mà session này đang retry lại. |
 
 ### 2.2. Frontend Log Entry (`SyncLogEntry` type)
 Cập nhật interface TypeScript để phản ánh các trường mới từ backend.
@@ -24,7 +21,6 @@ export interface SyncLogEntry {
     // ... existing fields
     filesCount: number;       // Số file thành công
     failedCount?: number;     // Số file lỗi (Mới)
-    retriedBy?: string;       // Run ID của phiên retry (Mới)
     // ...
 }
 ```
@@ -55,7 +51,6 @@ Khi người dùng kích hoạt Retry từ giao diện:
 
 3.  **Liên kết Session (Session Linking):**
     - **Session Mới (Retry Session):** Lưu trường `retryOf = OldSessionID`.
-    - **Session Cũ (Failed Session):** Cập nhật trường `retried = true` và `retriedBy = NewRunID`.
 
 ## 4. Hiển thị trên Giao diện (Frontend UI)
 

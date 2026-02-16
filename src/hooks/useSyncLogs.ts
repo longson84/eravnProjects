@@ -20,12 +20,12 @@ export function useSyncLogDetails(sessionId: string, projectId: string, enabled:
     });
 }
 
-export function useRetrySync() {
+export function useContinueSync() {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: ({ sessionId, projectId }: { sessionId: string; projectId: string }) =>
-            gasService.retrySync(sessionId, projectId),
+            gasService.continueSync(sessionId, projectId),
         onSuccess: () => {
             // Invalidate sync logs to refresh the list (show new session, update old session status)
             queryClient.invalidateQueries({ queryKey: ['syncLogs'] });

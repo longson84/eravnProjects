@@ -12,8 +12,8 @@ function getSyncLogDetails(sessionId, projectId) {
   return SyncLogService.getSyncLogDetails(sessionId, projectId);
 }
 
-function retrySync(sessionId, projectId) {
-  return SyncLogService.retrySyncProject(sessionId, projectId);
+function continueSync(sessionId, projectId) {
+  return SyncLogService.continueSyncProject(sessionId, projectId);
 }
 
 var SyncLogService = {
@@ -65,13 +65,12 @@ var SyncLogService = {
             endTime: data.timestamp, 
             duration: data.executionDurationSeconds,
             status: data.status,
+            current: data.current, // New field
             filesCount: data.filesCount,
-            failedCount: data.failedFilesCount || 0, // Added failed count
+            failedCount: data.failedFilesCount || 0,
             totalSize: data.totalSizeSynced,
             error: data.errorMessage,
-            retried: data.retried || false,
-            retriedBy: data.retriedBy || null, // Added retriedBy ID
-            retryOf: data.retryOf || null,
+            continueId: data.continueId || null, // New field
             triggeredBy: data.triggeredBy || 'manual'
         });
       });
@@ -89,76 +88,29 @@ var SyncLogService = {
   },
 
   /**
-   * Retry a failed sync project
+   * Continue a sync project (formerly Retry)
+   * Triggers a new sync which will automatically pick up from where it left off
+   * if the last session was interrupted/error.
    */
-  retrySyncProject: function(sessionId, projectId) {
+  continueSyncProject: function(sessionId, projectId) {
     try {
-      var session = getSyncSessionById(sessionId);
+      // Just trigger a new sync. 
+      // The new syncSingleProject_ logic will automatically detect if the last session 
+      // (which is likely this one or a subsequent failed one) needs "Continue".
       
-      if (!session) {
-        throw new Error('Session not found');
-      }
+      // We pass 'manual' or 'continue' as triggeredBy? 
+      // Spec says: "Người dùng bấm nút Continue... tương tự như retry hiện tại".
       
-      if (session.retried) {
-        return false; // Already retried
-      }
-      
-      // NEW LOGIC: Fetch failed files from this session
-      var failedFileIds = [];
-      try {
-        var fileLogs = getFileLogsBySession(sessionId);
-        if (fileLogs && fileLogs.length > 0) {
-           failedFileIds = fileLogs.filter(function(log) {
-             return log.status === 'error';
-           }).map(function(log) {
-             // Extract File ID from sourceLink
-             // Link format: https://drive.google.com/file/d/FILE_ID/view
-             var match = log.sourceLink.match(/\/d\/([a-zA-Z0-9_-]+)/);
-             return match ? match[1] : null;
-           }).filter(function(id) { return id !== null; });
-        }
-      } catch (err) {
-        Logger.log('Error fetching failed files for retry: ' + err);
-      }
-      
-      var syncOptions = {
-         triggeredBy: 'retry',
-         retryOf: sessionId
-      };
-      
-      // If we found specific failed files, pass them to the sync service
-      if (failedFileIds.length > 0) {
-         syncOptions.retryFileIds = failedFileIds;
-         Logger.log('Retrying ' + failedFileIds.length + ' specific failed files.');
-      } else {
-         Logger.log('No specific failed files found (or full retry needed). Running standard sync.');
-      }
-
-      var result;
-      // Trigger new sync
+      // Use the global function defined in Code.gs or SyncService.gs
       if (typeof syncProjectById === 'function') {
-         result = syncProjectById(projectId, syncOptions);
-      } else if (typeof SyncService !== 'undefined' && SyncService.syncProjectById) {
-         result = SyncService.syncProjectById(projectId, syncOptions);
+         syncProjectById(projectId, { triggeredBy: 'manual' });
       } else {
-         // Direct call fallback if in same scope
-         try {
-            result = syncProjectById(projectId, syncOptions);
-         } catch (e) {
-            throw new Error('SyncService not available: ' + e.message);
-         }
+         throw new Error('Sync function not available');
       }
-     
-      // Mark old session as retried and link to new session
-      var updateData = { retried: true };
-      if (result && result.runId) {
-          updateData.retriedBy = result.runId;
-      }
-      updateSyncSession(sessionId, updateData);
 
       return true;
     } catch (e) {
-      Logger.log('Retry failed: ' + e);
+      Logger.log('Continue sync failed: ' + e);
       throw e;
     }
   }

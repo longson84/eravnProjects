@@ -321,7 +321,9 @@ export function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-3">
-                            {data.recentSyncs.length > 0 ? data.recentSyncs.map((session: SyncSession) => (
+                            {data.recentSyncs.length > 0 ? [...data.recentSyncs]
+                                .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                                .map((session: SyncSession) => (
                                 <div
                                     key={session.id}
                                     className="flex items-center justify-between p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
@@ -343,8 +345,19 @@ export function DashboardPage() {
                                             }
                                         >
                                             {session.status === 'success' ? 'Thành công' :
-                                             session.status === 'error' ? 'Lỗi' : 'Bị gián đoạn'}
+                                             session.status === 'error' ? 'Lỗi' : 'Gián đoạn'}
                                         </Badge>
+                                        {session.current && (
+                                            <Badge
+                                                variant={
+                                                    session.current === 'success' ? 'success' :
+                                                    session.current === 'error' ? 'destructive' : 'warning'
+                                                }
+                                            >
+                                                {session.current === 'success' ? 'Thành công' :
+                                                 session.current === 'error' ? 'Lỗi' : 'Gián đoạn'}
+                                            </Badge>
+                                        )}
                                         <span className="text-xs text-muted-foreground">
                                             {formatTime(session.timestamp)}
                                         </span>

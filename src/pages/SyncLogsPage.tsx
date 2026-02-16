@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollText, Search, Filter, ChevronDown, ChevronRight, FileText, CheckCircle2, XCircle, Timer, Clock, HardDrive, Loader2, RefreshCw } from 'lucide-react';
+import { ScrollText, Search, Filter, ChevronDown, ChevronRight, FileText, CheckCircle2, XCircle, Timer, Clock, Loader2, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { useSyncLogs, useSyncLogDetails, useRetrySync } from '@/hooks/useSyncLogs';
+import { useSyncLogs, useSyncLogDetails, useContinueSync } from '@/hooks/useSyncLogs';
 import type { SyncLogEntry } from '@/types/types';
 
 export function SyncLogsPage() {
@@ -29,7 +29,7 @@ export function SyncLogsPage() {
         !!expandedSession
     );
 
-    const retryMutation = useRetrySync();
+    const continueMutation = useContinueSync();
 
     const handleExpand = (sessionId: string, projectId: string) => {
         if (expandedSession?.sessionId === sessionId && expandedSession?.projectId === projectId) {
@@ -39,23 +39,39 @@ export function SyncLogsPage() {
         }
     };
 
-    const handleRetry = (e: React.MouseEvent, session: SyncLogEntry) => {
+    const handleContinue = (e: React.MouseEvent, session: SyncLogEntry) => {
         e.stopPropagation();
-        if (session.retried) return;
-        retryMutation.mutate({ sessionId: session.sessionId, projectId: session.projectId });
+        // Allow continue even if already continued (just starts a new run)
+        continueMutation.mutate({ sessionId: session.sessionId, projectId: session.projectId });
     };
 
     const fmt = (d: string) => new Date(d).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'numeric', year: '2-digit' });
     const fmtSize = (b?: number) => { if (!b) return '—'; if (b < 1024) return `${b} B`; if (b < 1048576) return `${(b / 1024).toFixed(0)} KB`; return `${(b / 1048576).toFixed(0)} MB`; };
 
+    const sortedSessions = [...sessions].sort((a, b) => {
+        return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+    });
+
+    const currentBadge = (c?: string) => {
+        if (!c) return <span className="text-xs text-muted-foreground">—</span>;
+        if (c === 'success' || c === 'error' || c === 'interrupted') return statusBadge(c);
+        return <span className="text-xs text-muted-foreground">{c}</span>;
+    };
+
+    const canContinue = (session: SyncLogEntry) => {
+        if (session.status !== 'error' && session.status !== 'interrupted') return false;
+        if (session.continueId) return false;
+        return true;
+    };
+
     const statusBadge = (s: string) => {
         if (s === 'success') return <Badge variant="success"><CheckCircle2 className="w-3 h-3 mr-1" />Thành công</Badge>;
         if (s === 'error') return <Badge variant="destructive"><XCircle className="w-3 h-3 mr-1" />Lỗi</Badge>;
-        return <Badge variant="warning"><Timer className="w-3 h-3 mr-1" />Ngắt</Badge>;
+        return <Badge variant="warning"><Timer className="w-3 h-3 mr-1" />Gián đoạn</Badge>;
     };
 
-    const totalFiles = sessions.reduce((a, s) => a + s.filesCount, 0);
-    const avgDur = sessions.length ? Math.round(sessions.reduce((a, s) => a + s.duration, 0) / sessions.length) : 0;
+    const totalFiles = sortedSessions.reduce((a, s) => a + s.filesCount, 0);
+    const avgDur = sortedSessions.length ? Math.round(sortedSessions.reduce((a, s) => a + s.duration, 0) / sortedSessions.length) : 0;
 
     return (
         <div className="space-y-6">
@@ -114,32 +130,33 @@ export function SyncLogsPage() {
                             <TableRow>
                                 <TableHead className="w-8"></TableHead>
                                 <TableHead>Dự án</TableHead>
-                                <TableHead>Run ID</TableHead>
-                                <TableHead>Thời gian</TableHead>
-                                <TableHead className="text-center">Files Synced</TableHead>
-                                <TableHead className="text-center">Errors</TableHead>
-                                <TableHead className="text-center">Duration</TableHead>
-                                <TableHead>Trạng thái</TableHead>
-                                <TableHead>Retry ID</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                <TableHead>ID</TableHead>
+                                <TableHead>Vào lúc</TableHead>
+                                <TableHead className="text-center">Synced</TableHead>
+                                <TableHead className="text-center">Lỗi</TableHead>
+                                <TableHead className="text-center">TG</TableHead>
+                                <TableHead>Kết quả</TableHead>
+                                <TableHead>Hiện tại</TableHead>
+                                <TableHead>Trigger</TableHead>
+                                <TableHead>Continue</TableHead>
+                                <TableHead className="text-right">-</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
-                                <TableRow><TableCell colSpan={10} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></TableCell></TableRow>
-                            ) : sessions.length === 0 ? (
-                                <TableRow><TableCell colSpan={10} className="text-center py-12 text-muted-foreground">Không tìm thấy phiên nào</TableCell></TableRow>
-                            ) : sessions.map((session) => (
+                                <TableRow><TableCell colSpan={12} className="text-center py-12"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></TableCell></TableRow>
+                            ) : sortedSessions.length === 0 ? (
+                                <TableRow><TableCell colSpan={12} className="text-center py-12 text-muted-foreground">Không tìm thấy phiên nào</TableCell></TableRow>
+                            ) : sortedSessions.map((session) => (
                                 <>
                                     <TableRow key={`${session.sessionId}-${session.projectId}`} className="cursor-pointer hover:bg-muted/50" onClick={() => handleExpand(session.sessionId, session.projectId)}>
                                         <TableCell>{expandedSession?.sessionId === session.sessionId && expandedSession?.projectId === session.projectId ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}</TableCell>
                                         <TableCell className="font-medium">
                                             {session.projectName}
-                                            {session.retryOf && <Badge variant="outline" className="ml-2 text-[10px] h-4">Retry</Badge>}
+                                            {session.continueId && <Badge variant="outline" className="ml-2 text-[10px] h-4">Continue</Badge>}
                                         </TableCell>
                                         <TableCell className="text-xs font-mono text-muted-foreground">
                                             {session.runId}
-                                            {session.retryOf && <div className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">↳ of {session.retryOf.slice(0, 8)}...</div>}
                                         </TableCell>
                                         <TableCell className="text-sm">{fmt(session.startTime)}</TableCell>
                                         <TableCell className="text-center font-medium text-emerald-600">{session.filesCount}</TableCell>
@@ -148,36 +165,38 @@ export function SyncLogsPage() {
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 {statusBadge(session.status)}
-                                                {session.retried && <Badge variant="secondary" className="text-[10px] h-5">Retried</Badge>}
                                             </div>
                                         </TableCell>
+                                        <TableCell>
+                                            {currentBadge(session.current)}
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                                                {session.triggeredBy === 'scheduled' ? 'Schedule' : 'Manual'}
+                                            </span>
+                                        </TableCell>
                                         <TableCell className="text-xs font-mono text-muted-foreground">
-                                            {session.retriedBy ? (
-                                                <div className="flex items-center gap-1 text-blue-600">
-                                                    <RefreshCw className="w-3 h-3" />
-                                                    {session.retriedBy}
-                                                </div>
-                                            ) : '-'}
+                                            {session.continueId || '-'}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            {session.status === 'error' && !session.retried && (
+                                            {canContinue(session) && (
                                                 <Button 
                                                     size="sm" 
                                                     variant="outline" 
                                                     className="h-7 text-xs"
-                                                    onClick={(e) => handleRetry(e, session)}
-                                                    disabled={retryMutation.isPending}
+                                                    onClick={(e) => handleContinue(e, session)}
+                                                    disabled={continueMutation.isPending}
                                                 >
-                                                    {retryMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
-                                                    Retry
+                                                    {continueMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                                                    Continue
                                                 </Button>
                                             )}
                                         </TableCell>
                                     </TableRow>
                                     {expandedSession?.sessionId === session.sessionId && expandedSession?.projectId === session.projectId && (
                                         <TableRow>
-                                            <TableCell colSpan={10} className="p-0 bg-muted/10">
-                                                <div className="p-4 border-l-2 border-primary/20 ml-4 my-2">
+                                            <TableCell colSpan={12} className="p-0 bg-muted/10">
+                                                <div className="p-4 border-l-2 border-primary/20 ml-4 my-2 overflow-x-auto">
                                                     <h3 className="font-semibold mb-3 flex items-center gap-2"><FileText className="w-4 h-4" />Chi tiết file</h3>
                                                     {session.error && (
                                                         <div className="mb-4 p-3 rounded-lg bg-destructive/10 border border-destructive/20">

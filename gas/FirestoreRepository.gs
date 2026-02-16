@@ -109,6 +109,24 @@ function getSyncSessionsByProject(projectId) {
   return result.filter(function(r) { return r.document; }).map(function(r) { return docToSession_(r.document); });
 }
 
+/**
+ * Get pending sync sessions (error or interrupted, and not yet completed)
+ * Used for "Continue" sync logic
+ */
+function getPendingSyncSessions(projectId) {
+  // We fetch recent 20 sessions and filter in memory because Firestore composite queries are complex via REST
+  var sessions = getSyncSessionsByProject(projectId); // Already sorted by timestamp DESC
+  
+  // Filter for sessions that are:
+  // 1. Status is error or interrupted
+  // 2. Current status is NOT success (meaning they haven't been fully resolved yet)
+  return sessions.filter(function(s) {
+    var isFailed = s.status === 'error' || s.status === 'interrupted';
+    var isNotResolved = (s.current || s.status) !== 'success';
+    return isFailed && isNotResolved;
+  });
+}
+
 function getSyncSessionById(sessionId) {
   var result = firestoreRequest_('GET', 'syncSessions/' + sessionId);
   return docToSession_(result);
@@ -117,9 +135,9 @@ function getSyncSessionById(sessionId) {
 function updateSyncSession(sessionId, updates) {
   // Partial update
   var fields = {};
-  if (updates.hasOwnProperty('retried')) fields.retried = { booleanValue: updates.retried };
-  if (updates.hasOwnProperty('retriedBy')) fields.retriedBy = { stringValue: updates.retriedBy }; // Add retriedBy
   if (updates.hasOwnProperty('status')) fields.status = { stringValue: updates.status };
+   if (updates.hasOwnProperty('current')) fields.current = { stringValue: updates.current };
+   if (updates.hasOwnProperty('continueId')) fields.continueId = { stringValue: updates.continueId };
   // Add more fields as needed
 
   var doc = { fields: fields };
@@ -256,7 +274,7 @@ function batchSaveFileLogs(sessionId, fileLogs) {
 }
 
 function getFileLogsBySession(sessionId) {
-  var result = firestoreRequest_('GET',
+  var result = firestoreRequest_('POST',
     ':runQuery',
     { structuredQuery: { from: [{ collectionId: 'fileLogs' }], where: { fieldFilter: { field: { fieldPath: 'sessionId' }, op: 'EQUAL', value: { stringValue: sessionId } } } } }
   );
@@ -441,10 +459,9 @@ function docToSession_(doc) {
     failedFilesCount: Number(fv_(f.failedFilesCount)) || 0, // Add failedFilesCount
     totalSizeSynced: Number(fv_(f.totalSizeSynced)) || 0, 
     errorMessage: fv_(f.errorMessage) || undefined,
-    retried: fv_(f.retried) === true || fv_(f.retried) === 'true',
-    retriedBy: fv_(f.retriedBy) || null, // Add retriedBy
-    retryOf: fv_(f.retryOf) || null,
-    triggeredBy: fv_(f.triggeredBy) || 'manual'
+    triggeredBy: fv_(f.triggeredBy) || 'manual',
+    current: fv_(f.current) || fv_(f.status), // New field: current status
+    continueId: fv_(f.continueId) || null // New field: continueId
   };
 }
 
@@ -456,15 +473,14 @@ function sessionToDoc_(s) {
     timestamp: { stringValue: s.timestamp },
     executionDurationSeconds: { integerValue: String(s.executionDurationSeconds) },
     status: { stringValue: s.status },
+    current: { stringValue: s.current || s.status }, // New field
     filesCount: { integerValue: String(s.filesCount) },
     totalSizeSynced: { integerValue: String(s.totalSizeSynced || 0) },
-    failedFilesCount: { integerValue: String(s.failedFilesCount || 0) }, // Add failedFilesCount
-    retried: { booleanValue: !!s.retried },
+    failedFilesCount: { integerValue: String(s.failedFilesCount || 0) },
     triggeredBy: { stringValue: s.triggeredBy || 'manual' }
   };
-  if (s.retriedBy) fields.retriedBy = { stringValue: s.retriedBy }; // Add retriedBy
-  if (s.retryOf) fields.retryOf = { stringValue: s.retryOf };
   if (s.errorMessage) fields.errorMessage = { stringValue: s.errorMessage };
+  if (s.continueId) fields.continueId = { stringValue: s.continueId }; // New field
   return { fields: fields };
 }
 
@@ -508,6 +524,7 @@ function docToSettings_(doc) {
     webhookUrl: fv_(f.webhookUrl) || '',
     firebaseProjectId: fv_(f.firebaseProjectId) || '',
     enableNotifications: fv_(f.enableNotifications) === 'true' || fv_(f.enableNotifications) === true,
+    enableAutoSchedule: fv_(f.enableAutoSchedule) === 'true' || fv_(f.enableAutoSchedule) === true,
     maxRetries: Number(fv_(f.maxRetries)) || 3,
     batchSize: Number(fv_(f.batchSize)) || 50,
   };
@@ -520,6 +537,7 @@ function settingsToDoc_(s) {
     webhookUrl: { stringValue: s.webhookUrl || '' },
     firebaseProjectId: { stringValue: s.firebaseProjectId || '' },
     enableNotifications: { booleanValue: !!s.enableNotifications },
+    enableAutoSchedule: { booleanValue: !!s.enableAutoSchedule },
     maxRetries: { integerValue: String(s.maxRetries) },
     batchSize: { integerValue: String(s.batchSize) },
   }};
@@ -544,6 +562,7 @@ function getDefaultSettings_() {
     webhookUrl: '',
     firebaseProjectId: '',
     enableNotifications: true,
+    enableAutoSchedule: true,
     maxRetries: CONFIG.MAX_RETRIES,
     batchSize: CONFIG.BATCH_SIZE,
   };

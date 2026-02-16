@@ -97,15 +97,3 @@ Tách logic data fetching ra khỏi UI component. Sử dụng `React Query` đ�
 
 ## 4. Data Structure Updates (Confirm)
 
-**SyncSession (Firestore Document)**
-```typescript
-interface SyncSession {
-  id: string;
-  // ... fields cũ
-  retried?: boolean;        // Đánh dấu đã được retry chưa
-  retrySessionId?: string;  // ID của session mới được sinh ra từ việc retry
-  retryOf?: string;         // ID của session gốc (nếu session này là kết quả của việc retry)
-}
-```
-
-Kế hoạch này đảm bảo tính nhất quán, hiệu năng (lazy load) và trải nghiệm người dùng tốt (retry trace).

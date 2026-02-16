@@ -188,6 +188,102 @@ export const mockSyncSessions: SyncSession[] = [
         filesCount: 21,
         totalSizeSynced: 219012345, // 219.01MB
     },
+    // ==========================================
+    // CHAIN SYNC DEMO (5 Sessions)
+    // ==========================================
+    {
+        id: 'sess-cont-1',
+        projectId: 'proj-004',
+        projectName: 'Dự án Eaton Park',
+        runId: 'run-chain-001',
+        timestamp: '2026-02-16T08:00:00Z',
+        executionDurationSeconds: 300,
+        status: 'interrupted',
+        filesCount: 10,
+        totalSizeSynced: 524288000, // 500MB
+        errorMessage: 'Timeout: Script exceeded max execution time.',
+    },
+    {
+        id: 'sess-cont-2',
+        projectId: 'proj-004',
+        projectName: 'Dự án Eaton Park',
+        runId: 'run-chain-002',
+        timestamp: '2026-02-16T08:06:00Z',
+        executionDurationSeconds: 300,
+        status: 'interrupted',
+        filesCount: 8,
+        totalSizeSynced: 419430400, // 400MB
+        errorMessage: 'Timeout: Script exceeded max execution time.',
+        continueId: 'sess-cont-1',
+        current: 'interrupted',
+    },
+    {
+        id: 'sess-cont-3',
+        projectId: 'proj-004',
+        projectName: 'Dự án Eaton Park',
+        runId: 'run-chain-003',
+        timestamp: '2026-02-16T08:12:00Z',
+        executionDurationSeconds: 150,
+        status: 'interrupted',
+        filesCount: 5,
+        totalSizeSynced: 209715200, // 200MB
+        errorMessage: 'Google Drive API: Rate limit exceeded.',
+        continueId: 'sess-cont-2',
+        current: 'interrupted',
+    },
+    {
+        id: 'sess-cont-4',
+        projectId: 'proj-004',
+        projectName: 'Dự án Eaton Park',
+        runId: 'run-chain-004',
+        timestamp: '2026-02-16T08:20:00Z',
+        executionDurationSeconds: 45,
+        status: 'interrupted',
+        filesCount: 2,
+        totalSizeSynced: 52428800, // 50MB
+        errorMessage: 'Network error: Connection lost.',
+        continueId: 'sess-cont-3',
+        current: 'interrupted',
+    },
+    {
+        id: 'sess-cont-5',
+        projectId: 'proj-004',
+        projectName: 'Dự án Eaton Park',
+        runId: 'run-chain-005',
+        timestamp: '2026-02-16T08:25:00Z',
+        executionDurationSeconds: 120,
+        status: 'success',
+        filesCount: 15,
+        totalSizeSynced: 157286400, // 150MB
+        continueId: 'sess-cont-4',
+        current: 'success',
+    },
+    // ==========================================
+    // MORE RANDOM LOGS
+    // ==========================================
+    {
+        id: 'sess-err-001',
+        projectId: 'proj-003',
+        projectName: 'Dự án The Global City',
+        runId: 'run-err-001',
+        timestamp: '2026-02-16T09:00:00Z',
+        executionDurationSeconds: 10,
+        status: 'error',
+        filesCount: 0,
+        totalSizeSynced: 0,
+        errorMessage: 'Folder not found: Source folder ID is invalid.',
+    },
+    {
+        id: 'sess-succ-001',
+        projectId: 'proj-001',
+        projectName: 'Dự án Vinhomes Grand Park',
+        runId: 'run-succ-001',
+        timestamp: '2026-02-16T10:00:00Z',
+        executionDurationSeconds: 20,
+        status: 'success',
+        filesCount: 5,
+        totalSizeSynced: 10485760, // 10MB
+    },
 ];
 
 export const mockFileLogs: FileLog[] = [
@@ -250,6 +346,60 @@ export const mockFileLogs: FileLog[] = [
         modifiedDate: '2026-02-10T11:20:00Z',
         fileSize: 3200000,
         status: 'success',
+    },
+    // ==========================================
+    // CHAIN SYNC FILE LOGS
+    // ==========================================
+    {
+        id: 'fl-chain-001',
+        sessionId: 'sess-cont-5',
+        fileName: 'Final_Render_Scene01.mp4',
+        sourceLink: 'https://drive.google.com/file/d/file-chain-1/view',
+        destLink: 'https://drive.google.com/file/d/file-chain-1-copy/view',
+        sourcePath: '/EatonPark/Render/Video/',
+        createdDate: '2026-02-16T08:00:00Z',
+        modifiedDate: '2026-02-16T08:24:00Z',
+        fileSize: 150000000,
+        status: 'success',
+    },
+    {
+        id: 'fl-chain-002',
+        sessionId: 'sess-cont-4',
+        fileName: 'Texture_Pack_HighRes.zip',
+        sourceLink: 'https://drive.google.com/file/d/file-chain-2/view',
+        destLink: '',
+        sourcePath: '/EatonPark/Assets/Textures/',
+        createdDate: '2026-02-16T08:10:00Z',
+        modifiedDate: '2026-02-16T08:18:00Z',
+        fileSize: 50000000,
+        status: 'error',
+        errorMessage: 'Network connection lost during upload.',
+    },
+    {
+        id: 'fl-chain-003',
+        sessionId: 'sess-cont-3',
+        fileName: 'Architecture_Blueprint_v5.pdf',
+        sourceLink: 'https://drive.google.com/file/d/file-chain-3/view',
+        destLink: '',
+        sourcePath: '/EatonPark/Blueprints/',
+        createdDate: '2026-02-16T08:05:00Z',
+        modifiedDate: '2026-02-16T08:11:00Z',
+        fileSize: 25000000,
+        status: 'error',
+        errorMessage: 'Rate limit exceeded (403).',
+    },
+    {
+        id: 'fl-err-001',
+        sessionId: 'sess-err-001',
+        fileName: 'Invalid_Folder_Reference.txt',
+        sourceLink: '',
+        destLink: '',
+        sourcePath: '/GlobalCity/Unknown/',
+        createdDate: '2026-02-16T09:00:00Z',
+        modifiedDate: '2026-02-16T09:00:00Z',
+        fileSize: 0,
+        status: 'error',
+        errorMessage: 'Source folder ID not found.',
     },
 ];
 

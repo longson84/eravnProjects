@@ -85,24 +85,35 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
                 endTime: s.timestamp, // Mock
                 duration: s.executionDurationSeconds,
                 status: s.status,
+                current: s.current,
+                continueId: s.continueId,
                 filesCount: s.filesCount,
                 totalSize: s.totalSizeSynced,
                 error: s.errorMessage,
-                retried: s.retried,
-                retryOf: s.retryOf,
                 triggeredBy: 'manual'
             } as SyncLogEntry));
         },
         getSyncLogDetails: () => {
             const [sessionId] = args;
-            return mockFileLogs.filter(f => f.sessionId === sessionId);
+            return mockFileLogs.filter(l => l.sessionId === sessionId);
         },
-        retrySync: () => {
+        continueSync: () => {
             const [sessionId] = args;
             const session = mockSyncSessions.find(s => s.id === sessionId);
             if (session) {
-                session.retried = true;
-                const newSession = { ...session, id: `sess-${Date.now()}`, runId: `run-${Date.now()}`, timestamp: new Date().toISOString(), status: 'success' as const, retried: false, retryOf: sessionId, errorMessage: undefined };
+                // In Continue logic, we don't necessarily flag "retried".
+                // We just trigger a new sync which picks up where left off.
+                // But for mock purposes, let's create a new session that continues this one.
+                const newSession = { 
+                    ...session, 
+                    id: `sess-${Date.now()}`, 
+                    runId: `run-${Date.now()}`, 
+                    timestamp: new Date().toISOString(), 
+                    status: 'success' as const, 
+                    errorMessage: undefined,
+                    triggeredBy: 'manual',
+                    continueId: sessionId // Link to the old session
+                };
                 mockSyncSessions.unshift(newSession);
                 return true;
             }
@@ -177,7 +188,7 @@ export const gasService = {
     // Logs
     getSyncLogs: (filters: { days: number; status?: string; search?: string }) => gasRun<SyncLogEntry[]>('getSyncLogs', filters),
     getSyncLogDetails: (sessionId: string, projectId: string) => gasRun<FileLog[]>('getSyncLogDetails', sessionId, projectId),
-    retrySync: (sessionId: string, projectId: string) => gasRun<boolean>('retrySync', sessionId, projectId),
+    continueSync: (sessionId: string, projectId: string) => gasRun<boolean>('continueSync', sessionId, projectId),
 
     // Heartbeat
     getProjectHeartbeats: () => gasRun<ProjectHeartbeat[]>('getProjectHeartbeats'),

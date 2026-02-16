@@ -41,14 +41,14 @@ function extractFolderIdFromLink(link) {
 }
 
 /**
- * Format timestamp for file versioning (YYMMDDHHmm)
- * Example: 2026-02-14 13:58 -> 2602141358
+ * Format timestamp for file versioning (YYMMDD_HHmm)
+ * Example: 2026-02-14 13:58 -> 260214_1358
  * @param {string|Date} dateObj
  * @returns {string}
  */
 function formatTimestampForFilename(dateObj) {
   var date = new Date(dateObj);
-  return Utilities.formatDate(date, 'Asia/Ho_Chi_Minh', 'yyMMdd_HHmmss');
+  return Utilities.formatDate(date, 'Asia/Ho_Chi_Minh', 'yyMMdd_HHmm');
 }
 
 /**

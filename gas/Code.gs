@@ -68,7 +68,42 @@ function getSettings() {
 }
 
 function updateSettings(settingsData) {
-  return saveSettingsToDb(settingsData);
+  var savedSettings = saveSettingsToDb(settingsData);
+  
+  // Update trigger if schedule changed
+  try {
+    // Parse minutes from cron string or just use a default logic
+    // SettingsPage sends defaultScheduleCron like "0 *\/5 * * *"
+    // We need to parse this back to minutes to setup the trigger
+    
+    var cron = savedSettings.defaultScheduleCron;
+    var minutes = 360; // Default 6 hours
+    
+    if (cron) {
+      // Match *\/N * * * * (Minutes)
+      var minMatch = cron.match(/^\*\/(\d+)\s+\*\s+\*\s+\*\s+\*$/);
+      if (minMatch) {
+        minutes = parseInt(minMatch[1], 10);
+      } else {
+        // Match 0 *\/N * * * (Hours)
+        var hourMatch = cron.match(/^0\s+\*\/(\d+)\s+\*\s+\*\s+\*$/);
+        if (hourMatch) {
+          minutes = parseInt(hourMatch[1], 10) * 60;
+        }
+      }
+    }
+    
+    if (typeof TriggerService !== 'undefined' && TriggerService.setupSyncTrigger) {
+      TriggerService.setupSyncTrigger(minutes);
+    } else {
+      Logger.log('TriggerService not found, skipping trigger update');
+    }
+  } catch (e) {
+    Logger.log('Error updating trigger: ' + e.message);
+    // Don't fail the settings save if trigger fails
+  }
+  
+  return savedSettings;
 }
 
 // ==========================================

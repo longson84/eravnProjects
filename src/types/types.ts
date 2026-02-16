@@ -38,8 +38,8 @@ export interface SyncSession {
     filesCount: number;
     totalSizeSynced: number; // Size of files synced in this session
     errorMessage?: string;
-    retryOf?: string;        // ID of the original session if this is a retry
-    retried?: boolean;       // Whether this session has been retried
+    current?: string;        // Current status (for continue mode)
+    continueId?: string;     // ID of the session that this session continues
 }
 
 /** Flattened log entry for UI display (Project-centric) */
@@ -52,12 +52,12 @@ export interface SyncLogEntry {
     endTime: string;
     duration: number;
     status: 'success' | 'interrupted' | 'error';
+    current?: string;     // Current status
+    continueId?: string;  // ID of the session that this session continues
     filesCount: number;
     failedCount?: number; // Added failed files count
     totalSize: number;
     error?: string;
-    retried?: boolean;
-    retriedBy?: string;   // ID of the session that retried this one
     retryOf?: string;
     triggeredBy?: 'manual' | 'scheduled' | 'retry' | 'webhook';
 }
@@ -98,6 +98,7 @@ export interface AppSettings {
     webhookUrl: string;
     firebaseProjectId: string;
     enableNotifications: boolean;
+    enableAutoSchedule?: boolean;
     maxRetries: number;
     batchSize: number;
 }
