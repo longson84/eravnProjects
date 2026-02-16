@@ -67,6 +67,7 @@ export function ProjectsPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [syncingId, setSyncingId] = useState<string | null>(null);
+    const [isSyncAllRunning, setIsSyncAllRunning] = useState(false);
     
     // View mode state
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -222,6 +223,29 @@ export function ProjectsPage() {
         }
     };
 
+    const handleSyncAll = async () => {
+        setIsSyncAllRunning(true);
+        try {
+            const result = await gasService.runSyncAll();
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+            queryClient.invalidateQueries({ queryKey: ['syncLogs'] });
+
+            setSyncResult({
+                open: true,
+                success: result.success,
+                message: result.message,
+            });
+        } catch (e) {
+            setSyncResult({
+                open: true,
+                success: false,
+                message: 'Sync All failed: ' + (e as Error).message
+            });
+        } finally {
+            setIsSyncAllRunning(false);
+        }
+    };
+
     const handleToggleStatus = async (project: Project) => {
         const newStatus = project.status === 'active' ? 'paused' : 'active';
         await updateProject({ ...project, status: newStatus });
@@ -287,6 +311,21 @@ export function ProjectsPage() {
                             <List className="w-4 h-4" />
                         </Button>
                     </div>
+
+                    <Button
+                        variant="outline"
+                        className="gap-2"
+                        onClick={handleSyncAll}
+                        disabled={isSyncAllRunning || state.isLoading || filteredProjects.length === 0}
+                        title="Chạy Sync All cho tất cả dự án (manual)"
+                    >
+                        {isSyncAllRunning ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <RefreshCw className="w-4 h-4" />
+                        )}
+                        Sync All
+                    </Button>
 
                     <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
                         <DialogTrigger asChild>
