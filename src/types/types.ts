@@ -59,7 +59,7 @@ export interface SyncLogEntry {
     totalSize: number;
     error?: string;
     retryOf?: string;
-    triggeredBy?: 'manual' | 'scheduled' | 'retry' | 'webhook';
+    triggeredBy?: 'manual' | 'scheduled';
 }
 
 /** Filter criteria for fetching sync logs */

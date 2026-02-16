@@ -8,8 +8,13 @@
  * Priority: 
  * 1. Interrupted/Error projects (newest first)
  * 2. Success/Warning projects (oldest first)
+ * @param {Object} options - { triggeredBy?: 'manual' | 'scheduled' }
+ *  - If called by time-based trigger: options is undefined -> treated as 'scheduled'
+ *  - If called from UI (runSyncAll): options.triggeredBy = 'manual'
  */
-function syncAllProjects() {
+function syncAllProjects(options) {
+  options = options || {};
+  var triggeredBy = options.triggeredBy || 'scheduled';
   var runId = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyMMdd-HHmmss');
   var settings = getSettingsFromCache_();
   
@@ -54,7 +59,7 @@ function syncAllProjects() {
   for (var i = 0; i < activeProjects.length; i++) {
     var project = activeProjects[i];
     try {
-      var result = syncSingleProject_(project, runId, settings, { triggeredBy: 'schedule' });
+      var result = syncSingleProject_(project, runId, settings, { triggeredBy: triggeredBy });
       results.push(result);
     } catch (e) {
       // Error of one project doesn't kill the entire queue

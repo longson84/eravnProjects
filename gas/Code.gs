@@ -52,7 +52,7 @@ function deleteProject(projectId) {
 // ==========================================
 
 function runSyncAll() {
-  return syncAllProjects();
+  return syncAllProjects({ triggeredBy: 'manual' });
 }
 
 function runSyncProject(projectId) {

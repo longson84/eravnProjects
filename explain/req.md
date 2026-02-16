@@ -267,9 +267,9 @@ Card này thể hiện từng dòng, mỗi dòng là một dự án được đ�
 Lưu ý rằng, một phiên đồng bộ có thể sync nhiều dự án. Chúng ta biểu diễn một dự án một dòng.
 ## 9. Sync Logs
 
-Chi tiết [Sync Log](./synclog_trae.md) và [Cơ chế Log theo File & Retry](./synclog_by_files.md)
+Chi tiết [Cơ chế Log theo File & Retry](./synclog_by_files.md)
 Giao diện này thể hiện danh sách các dự án được sync.
-Lưu ý rằng, một sync session sẽ có thể cover nhiều dự án. Nhưng khi thể hiện, chúng ta thể hiện theo các dự án
+Lưu ý rằng, một sync run sẽ có thể cover nhiều dự án. Nhưng khi thể hiện, chúng ta thể hiện theo các dự án (sync session)
 
 Chúng ta sắp xếp theo thời gian chạy, cái gần nhất để trên cùng
 

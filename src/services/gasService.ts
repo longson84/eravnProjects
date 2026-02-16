@@ -76,7 +76,7 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
             }
 
             // Flatten to SyncLogEntry
-            return filtered.map(s => ({
+            return filtered.map((s): SyncLogEntry => ({
                 sessionId: s.id,
                 projectId: s.projectId,
                 projectName: s.projectName,
@@ -91,7 +91,7 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
                 totalSize: s.totalSizeSynced,
                 error: s.errorMessage,
                 triggeredBy: 'manual'
-            } as SyncLogEntry));
+            }));
         },
         getSyncLogDetails: () => {
             const [sessionId] = args;
