@@ -70,31 +70,38 @@ function getSettings() {
 function updateSettings(settingsData) {
   var savedSettings = saveSettingsToDb(settingsData);
   
-  // Update trigger if schedule changed
+  // Update or remove time-based trigger based on settings
   try {
-    // Parse minutes from cron string or just use a default logic
-    // SettingsPage sends defaultScheduleCron like "0 *\/5 * * *"
-    // We need to parse this back to minutes to setup the trigger
-    
-    var cron = savedSettings.defaultScheduleCron;
-    var minutes = 360; // Default 6 hours
-    
-    if (cron) {
-      // Match *\/N * * * * (Minutes)
-      var minMatch = cron.match(/^\*\/(\d+)\s+\*\s+\*\s+\*\s+\*$/);
-      if (minMatch) {
-        minutes = parseInt(minMatch[1], 10);
+    if (typeof TriggerService !== 'undefined') {
+      // If auto schedule is enabled, (re)create trigger with current cron
+      if (savedSettings.enableAutoSchedule) {
+        // Parse minutes from cron string
+        var cron = savedSettings.defaultScheduleCron;
+        var minutes = 360; // Default 6 hours
+        
+        if (cron) {
+          // Match *\/N * * * * (Minutes)
+          var minMatch = cron.match(/^\*\/(\d+)\s+\*\s+\*\s+\*\s+\*$/);
+          if (minMatch) {
+            minutes = parseInt(minMatch[1], 10);
+          } else {
+            // Match 0 *\/N * * * (Hours)
+            var hourMatch = cron.match(/^0\s+\*\/(\d+)\s+\*\s+\*\s+\*$/);
+            if (hourMatch) {
+              minutes = parseInt(hourMatch[1], 10) * 60;
+            }
+          }
+        }
+        
+        if (TriggerService.setupSyncTrigger) {
+          TriggerService.setupSyncTrigger(minutes);
+        }
       } else {
-        // Match 0 *\/N * * * (Hours)
-        var hourMatch = cron.match(/^0\s+\*\/(\d+)\s+\*\s+\*\s+\*$/);
-        if (hourMatch) {
-          minutes = parseInt(hourMatch[1], 10) * 60;
+        // Auto schedule disabled: remove existing triggers
+        if (TriggerService.disableSyncTrigger) {
+          TriggerService.disableSyncTrigger();
         }
       }
-    }
-    
-    if (typeof TriggerService !== 'undefined' && TriggerService.setupSyncTrigger) {
-      TriggerService.setupSyncTrigger(minutes);
     } else {
       Logger.log('TriggerService not found, skipping trigger update');
     }

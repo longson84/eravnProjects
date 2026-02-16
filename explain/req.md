@@ -299,4 +299,20 @@ Khi chúng ta bấm vào mỗi dự án, ở bảng bên dưới sẽ thể hi�
 - Folder gốc
 - Trạng thái (Success/Error)
 
-  
+
+## 10. Sync All vs. Scheduled Sync
+
+Trong settings, chúng ta có thiết lập lịch định kỳ chạy sync tất cả các dự án. Đồng thời chúng ta cũng có một thiết lập, có enable việc sync định kỳ hay không.
+
+Tuy nhiên, việc Sync All cũng có thể được bắt đầu từ chính user. Ở màn hình các dự án, user có thể nhấn nút Sync All để chạy sync tất cả các dự án.
+
+Để đảm bảo không bị conflict giữa sync định kỳ và sync từ user, bất kể khi user bấm Sync All, hoặc Sync một dự án, thì việc settings sync định kỳ phải được disable. 
+
+Khi user bấm nút sync một dự án hoặc Sync All, hệ thống phải bật lên cửa sổ thông báo "Khi chủ động sync ở đây, lịch sync định kỳ sẽ tắt. Nếu bạn muốn bật lại sync định kỳ, hãy bật lại trong Settings. Nhấn OK để tiếp tục"
+
+User có thể bấm OK để tiếp tục sync hoặc Cancel để hủy việc sync.
+
+Nếu user bấm OK
+
+- Đầu tiên, tắt option sync định kỳ (và do đó, sẽ là xóa các trigger)
+- Tiến hành tác vụ sync theo dự án hoặc sync all

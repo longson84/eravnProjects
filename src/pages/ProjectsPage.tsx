@@ -60,7 +60,7 @@ import type { Project } from '@/types/types';
 import { useQueryClient } from '@tanstack/react-query';
 
 export function ProjectsPage() {
-    const { state, createProject, updateProject, deleteProject } = useAppContext();
+    const { state, createProject, updateProject, deleteProject, updateSettings } = useAppContext();
     const queryClient = useQueryClient();
     const [search, setSearch] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -91,6 +91,23 @@ export function ProjectsPage() {
             setViewMode(savedMode);
         }
     }, []);
+
+    const handleManualSyncConfirmation = async (action: () => Promise<void>) => {
+        const confirmed = window.confirm(
+            "Khi chủ động sync ở đây, lịch sync định kỳ sẽ tắt. Nếu bạn muốn bật lại sync định kỳ, hãy bật lại trong Settings. Nhấn OK để tiếp tục"
+        );
+        if (!confirmed) return;
+
+        if (state.settings.enableAutoSchedule) {
+            try {
+                await updateSettings({ ...state.settings, enableAutoSchedule: false });
+            } catch (error) {
+                console.error("Failed to disable auto schedule:", error);
+            }
+        }
+        
+        await action();
+    };
 
     // Save view mode when changed
     const handleViewModeChange = (mode: 'grid' | 'list') => {
@@ -315,7 +332,7 @@ export function ProjectsPage() {
                     <Button
                         variant="outline"
                         className="gap-2"
-                        onClick={handleSyncAll}
+                        onClick={() => handleManualSyncConfirmation(handleSyncAll)}
                         disabled={isSyncAllRunning || state.isLoading || filteredProjects.length === 0}
                         title="Chạy Sync All cho tất cả dự án (manual)"
                     >
@@ -558,7 +575,7 @@ export function ProjectsPage() {
                                         variant="outline"
                                         size="sm"
                                         className="flex-1 gap-1"
-                                        onClick={() => handleSync(project.id)}
+                                        onClick={() => handleManualSyncConfirmation(() => handleSync(project.id))}
                                         disabled={syncingId === project.id || project.status === 'paused'}
                                     >
                                         {syncingId === project.id ? (
@@ -656,7 +673,7 @@ export function ProjectsPage() {
                                                 variant="ghost"
                                                 size="icon"
                                                 className="h-8 w-8"
-                                                onClick={() => handleSync(project.id)}
+                                                onClick={() => handleManualSyncConfirmation(() => handleSync(project.id))}
                                                 disabled={syncingId === project.id || project.status === 'paused'}
                                                 title="Sync ngay"
                                             >

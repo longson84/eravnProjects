@@ -18,8 +18,8 @@ function syncAllProjects(options) {
   var runId = Utilities.formatDate(new Date(), 'Asia/Ho_Chi_Minh', 'yyMMdd-HHmmss');
   var settings = getSettingsFromCache_();
   
-  // Respect auto schedule switch: only run when enabled
-  if (settings && settings.enableAutoSchedule === false) {
+  // Respect auto schedule switch: only run when enabled, UNLESS manual trigger
+  if (triggeredBy !== 'manual' && settings && settings.enableAutoSchedule === false) {
     Logger.log('Auto schedule is disabled. Skipping syncAllProjects run.');
     return { success: false, runId: runId, sessionsCount: 0, message: 'Auto schedule disabled' };
   }
@@ -134,16 +134,24 @@ function syncSingleProject_(project, runId, settings, options) {
   var effectiveTimestamp = 0;
   
   // Determine Mode (Step 2.1 vs 2.2)
+  triggeredBy = options.triggeredBy || 'manual';
+  Logger.log('Starting sync for project: ' + project.name + ', runId: ' + runId + ', triggeredBy: ' + triggeredBy);
+  
+  if (lastSyncStatus) Logger.log('Last Sync Status: ' + lastSyncStatus);
+
   if (lastSyncStatus === 'error' || lastSyncStatus === 'interrupted') {
       // Step 2.2: Continue Mode
       isContinueMode = true;
+      Logger.log('Checking for pending sessions (Continue Mode)...');
       pendingSessions = getPendingSyncSessions(project.id);
+      Logger.log('Found ' + pendingSessions.length + ' pending sessions.');
       
       if (pendingSessions.length > 0) {
           // Get success files from pending sessions
           // Iterate and fetch logs from all pending sessions to avoid re-syncing successful files
           for (var i = 0; i < pendingSessions.length; i++) {
               var sId = pendingSessions[i].id;
+              Logger.log('Fetching logs for pending session: ' + sId);
               var logs = getFileLogsBySession(sId);
               // LS: for within for loop may slowdown the process
               // However we assume there are not too many sync sessions to be continued
@@ -161,6 +169,7 @@ function syncSingleProject_(project, runId, settings, options) {
                   }
               }
           }
+          Logger.log('Mapped ' + Object.keys(successFilesMap).length + ' successful files to skip.');
           
           // For Continue mode, we always start scanning from baseTimestamp
           effectiveTimestamp = baseTimestamp;
@@ -189,7 +198,7 @@ function syncSingleProject_(project, runId, settings, options) {
     filesCount: 0,
     failedFilesCount: 0, 
     totalSizeSynced: 0, 
-    triggeredBy: options.triggeredBy || 'manual',
+    triggeredBy: triggeredBy,
     retryOf: null,
     continueId: null
   };
@@ -207,7 +216,7 @@ function syncSingleProject_(project, runId, settings, options) {
       session.status = 'interrupted';
       session.current = 'interrupted';
       session.errorMessage = 'Cutoff timeout: đã vượt quá ' + settings.syncCutoffSeconds + ' giây. Safe exit.';
-      Logger.log('Cutoff reached for project: ' + project.name);
+      Logger.log('Cutoff timeout: đã vượt quá ' + settings.syncCutoffSeconds + ' giây. Safe exit.');
       return;
     }
 
@@ -273,6 +282,7 @@ function syncSingleProject_(project, runId, settings, options) {
             if (currModTime <= prevModTime) {
                 // File hasn't changed since last successful sync
                 shouldCopy = false;
+                Logger.log('Skipping file (Continue Mode): ' + file.name + ' - Already synced in session ' + prevSuccessLog.sessionId);
             }
         }
 
@@ -356,18 +366,23 @@ function syncSingleProject_(project, runId, settings, options) {
   }
 
   // Post-Processing for Continue Mode
+
   if (isContinueMode && pendingSessions.length > 0) {
+      Logger.log('Post-processing Continue Mode. Pending Sessions: ' + pendingSessions.length);
       for (var i = 0; i < pendingSessions.length; i++) {
           var pSession = pendingSessions[i];
           var updates = { current: session.status };
           // Update continueId for the latest pending session (index 0)
           if (i === 0) {
-              updates.continueId = session.runId;
+              // Ensure we use the correct ID for linking
+              updates.continueId = session.runId; 
+              Logger.log('Linking pending session ' + pSession.runId + ' to new session ' + session.runId);
           }
           try {
              updateSyncSession(pSession.id, updates);
+             Logger.log('Updated pending session ' + pSession.id + ' status to ' + session.status);
           } catch(e) {
-             Logger.log('Failed to update pending session ' + pSession.id);
+             Logger.log('Failed to update pending session ' + pSession.id + ': ' + e.message);
           }
       }
   }
@@ -379,6 +394,8 @@ function syncSingleProject_(project, runId, settings, options) {
   project.filesCount = (project.filesCount || 0) + session.filesCount;
   project.totalSize = (project.totalSize || 0) + session.totalSizeSynced;
   project.updatedAt = getCurrentTimestamp();
+
+  Logger.log('Synced ' + session.filesCount + ' total size ' + session.totalSizeSynced + ' sync status ' + session.status);
   
   if (project.status === 'error' && session.status !== 'error') {
     project.status = 'active';

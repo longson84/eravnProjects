@@ -50,5 +50,20 @@ var TriggerService = {
     builder.create();
     
     Logger.log('Created sync trigger for every ' + minutes + ' minutes (approx)');
+  },
+
+  /**
+   * Disable sync trigger: remove all triggers for syncAllProjects
+   */
+  disableSyncTrigger: function() {
+    var triggers = ScriptApp.getProjectTriggers();
+    var removed = 0;
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'syncAllProjects') {
+        ScriptApp.deleteTrigger(triggers[i]);
+        removed++;
+      }
+    }
+    Logger.log('Disabled syncAllProjects triggers. Removed: ' + removed);
   }
 };
