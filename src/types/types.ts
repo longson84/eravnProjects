@@ -58,7 +58,6 @@ export interface SyncLogEntry {
     failedCount?: number; // Added failed files count
     totalSize: number;
     error?: string;
-    retryOf?: string;
     triggeredBy?: 'manual' | 'scheduled';
 }
 

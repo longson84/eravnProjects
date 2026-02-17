@@ -11,6 +11,14 @@ import { Label } from "@/components/ui/label";
 import { useSyncLogs, useSyncLogDetails, useContinueSync } from '@/hooks/useSyncLogs';
 import type { SyncLogEntry } from '@/types/types';
 
+const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 export function SyncLogsPage() {
     const [daysFilter, setDaysFilter] = useState('1');
     const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -134,7 +142,8 @@ export function SyncLogsPage() {
                                 <TableHead>Vào lúc</TableHead>
                                 <TableHead className="text-center">Synced</TableHead>
                                 <TableHead className="text-center">Lỗi</TableHead>
-                                <TableHead className="text-center">TG</TableHead>
+                                <TableHead className="text-center">T</TableHead>
+                                <TableHead className="text-center">Size</TableHead>
                                 <TableHead>Kết quả</TableHead>
                                 <TableHead>Hiện tại</TableHead>
                                 <TableHead>Trigger</TableHead>
@@ -162,6 +171,7 @@ export function SyncLogsPage() {
                                         <TableCell className="text-center font-medium text-emerald-600">{session.filesCount}</TableCell>
                                         <TableCell className="text-center font-medium text-destructive">{session.failedCount || 0}</TableCell>
                                         <TableCell className="text-center">{session.duration}s</TableCell>
+                                        <TableCell className="text-center text-sm">{formatBytes(session.totalSize || 0)}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 {statusBadge(session.status)}
