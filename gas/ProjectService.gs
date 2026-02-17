@@ -76,6 +76,7 @@ var ProjectService = {
       totalSize: 0,
       lastSyncTimestamp: null,
       lastSuccessSyncTimestamp: null,
+      nextSyncTimestamp: null, // New field for controlling sync checkpoint
       lastSyncStatus: null,
       
       // Timestamps
@@ -112,6 +113,22 @@ var ProjectService = {
   deleteProject: function(id) {
     if (!id) throw new Error('Project ID là bắt buộc');
     return deleteProject(id);
+  },
+
+  /**
+   * Reset a project to force full resync
+   * Sets nextSyncTimestamp to null and clears error status
+   */
+  resetProject: function(id) {
+    if (!id) throw new Error('Project ID là bắt buộc');
+    var project = getProjectById(id);
+    if (!project) throw new Error('Không tìm thấy dự án');
+    
+    project.nextSyncTimestamp = null;
+    project.lastSyncStatus = 'active'; // Clear error/interrupted status
+    project.updatedAt = getCurrentTimestamp();
+    
+    return saveProject(project);
   },
 
   /**

@@ -124,12 +124,22 @@ function syncSingleProject_(project, runId, settings, options) {
   
   // Step 1: Base timestamp & last status từ metadata project (không query sessions)
   var syncStartTime = project.syncStartDate ? new Date(project.syncStartDate).getTime() : 0;
-  var lastSuccessSyncTime = project.lastSuccessSyncTimestamp ? new Date(project.lastSuccessSyncTimestamp).getTime() : 0;
+  
+  // Use nextSyncTimestamp as the primary checkpoint
+  // Fallback to lastSuccessSyncTimestamp if nextSyncTimestamp is missing (backward compatibility)
+  // If both are null, fallback to 0 (sync from start)
+  var checkpointTime = 0;
+  if (project.nextSyncTimestamp) {
+      checkpointTime = new Date(project.nextSyncTimestamp).getTime();
+  } else if (project.lastSuccessSyncTimestamp) {
+      checkpointTime = new Date(project.lastSuccessSyncTimestamp).getTime();
+  }
+  
   var lastSyncStatus = project.lastSyncStatus || null;
   
-  // Unified Logic: Always use lastSuccessSyncTimestamp as base for file scanning
+  // Unified Logic: Always use checkpointTime as base for file scanning
   // If never synced successfully, use syncStartDate
-  var baseTimestamp = Math.max(lastSuccessSyncTime, syncStartTime);
+  var baseTimestamp = Math.max(checkpointTime, syncStartTime);
 
   var isContinueMode = false;
   var pendingSessions = [];
@@ -165,14 +175,14 @@ function syncSingleProject_(project, runId, settings, options) {
               }
           }
           Logger.log('Mapped ' + Object.keys(successFilesMap).length + ' successful files to skip.');
-          Logger.log('Continue Mode: Using lastSuccessSyncTimestamp (' + new Date(effectiveTimestamp).toISOString() + ') as base.');
+          Logger.log('Continue Mode: Using checkpointTime (' + new Date(effectiveTimestamp).toISOString() + ') as base.');
       } else {
           // Fallback if no pending found
           isContinueMode = false;
       }
   } 
   
-  // Normal Mode also uses effectiveTimestamp = baseTimestamp (which is lastSuccessSyncTime)
+  // Normal Mode also uses effectiveTimestamp = baseTimestamp (which is checkpointTime)
   // This ensures we always scan from the last KNOWN GOOD state.
 
 
@@ -384,10 +394,13 @@ function syncSingleProject_(project, runId, settings, options) {
   project.lastSyncTimestamp = session.timestamp; 
   project.lastSyncStatus = session.status;
   
-  // Update lastSuccessSyncTimestamp only if success
+  // Update lastSuccessSyncTimestamp and nextSyncTimestamp only if success
   if (session.status === 'success') {
       project.lastSuccessSyncTimestamp = session.timestamp;
+      project.nextSyncTimestamp = session.timestamp;
   }
+  // If failed/interrupted: keep nextSyncTimestamp as is (to retry from same point)
+  // or enter continue mode logic which also respects the same checkpoint.
 
   project.filesCount = (project.filesCount || 0) + session.filesCount;
   project.totalSize = (project.totalSize || 0) + session.totalSizeSynced;
