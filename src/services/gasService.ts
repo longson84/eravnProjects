@@ -149,6 +149,23 @@ async function getMockResponse<T>(functionName: string, ...args: any[]): Promise
             mockFileLogs.length = 0;
             return true;
         },
+        resetProject: () => {
+             const [projectId] = args;
+             const project = mockProjects.find(p => p.id === projectId);
+             if (project) {
+                 // Reset stats
+                 project.lastSyncTimestamp = null;
+                 project.lastSyncStatus = null;
+                 project.filesCount = 0;
+                 project.totalSize = 0;
+                 if (project.stats) {
+                    project.stats.todayFiles = 0;
+                    project.stats.last7DaysFiles = 0;
+                 }
+                 return { success: true };
+             }
+             return { success: false };
+        },
         testWebhook: () => {
             const [url] = args;
             if (!url) throw new Error('URL is required');
@@ -198,5 +215,6 @@ export const gasService = {
 
     // System
     resetDatabase: () => gasRun<boolean>('resetDatabase'),
+    resetProject: (projectId: string) => gasRun<{ success: boolean }>('resetProject', projectId),
     testWebhook: (url: string) => gasRun<boolean>('testWebhook', url),
 };

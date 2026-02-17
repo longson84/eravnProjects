@@ -14,6 +14,7 @@ import {
     Pencil,
     Trash2,
     RefreshCw,
+    RotateCcw,
     Clock,
     AlertCircle,
     CheckCircle2,
@@ -204,6 +205,19 @@ export function ProjectsPage() {
     const handleDelete = async (id: string) => {
         if (confirm('Bạn có chắc chắn muốn xóa dự án này?')) {
             await deleteProject(id);
+        }
+    };
+
+    const handleReset = async (projectId: string) => {
+        if (confirm('Thao tác này sẽ reset lịch sử sync của dự án')) {
+            try {
+                await gasService.resetProject(projectId);
+                queryClient.invalidateQueries({ queryKey: ['projects'] });
+                queryClient.invalidateQueries({ queryKey: ['syncLogs'] });
+            } catch (error) {
+                console.error('Failed to reset project:', error);
+                alert('Reset dự án thất bại: ' + (error as Error).message);
+            }
         }
     };
 
@@ -596,6 +610,7 @@ export function ProjectsPage() {
                                         ) : (
                                             <Play className="w-3.5 h-3.5" />
                                         )}
+                                        Pause
                                     </Button>
                                     <Button
                                         variant="outline"
@@ -603,6 +618,16 @@ export function ProjectsPage() {
                                         onClick={() => handleOpenEdit(project)}
                                     >
                                         <Pencil className="w-3.5 h-3.5" />
+                                        Edit
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleReset(project.id)}
+                                        title="Reset lịch sử syn"
+                                    >
+                                        <RotateCcw className="w-3.5 h-3.5" />
+                                        Reset
                                     </Button>
                                     <Button
                                         variant="outline"
@@ -675,7 +700,7 @@ export function ProjectsPage() {
                                                 className="h-8 w-8"
                                                 onClick={() => handleManualSyncConfirmation(() => handleSync(project.id))}
                                                 disabled={syncingId === project.id || project.status === 'paused'}
-                                                title="Sync ngay"
+                                                title="Sync"
                                             >
                                                 {syncingId === project.id ? (
                                                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -691,6 +716,15 @@ export function ProjectsPage() {
                                                 title="Chỉnh sửa"
                                             >
                                                 <Pencil className="w-4 h-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8"
+                                                onClick={() => handleReset(project.id)}
+                                                title="Reset lịch sử sync"
+                                            >
+                                                <RotateCcw className="w-4 h-4" />
                                             </Button>
                                             <Button
                                                 variant="ghost"
