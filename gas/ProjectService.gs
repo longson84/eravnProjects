@@ -112,7 +112,7 @@ var ProjectService = {
    */
   deleteProject: function(id) {
     if (!id) throw new Error('Project ID là bắt buộc');
-    return deleteProject(id);
+    return deleteProjectDoc(id);
   },
 
   /**
@@ -183,12 +183,4 @@ var ProjectService = {
  * Assuming this logic was inline or in Utils.gs. If it was inline in Code.gs, we define it here or use Utils.
  * Checking codebase, it seems to be used in Code.gs. We should ensure it's available.
  */
-function extractFolderIdFromLink(link) {
-  // Simple regex extraction - logic copied/moved from Code.gs
-  try {
-    var match = link.match(/[-\w]{25,}/);
-    return match ? match[0] : null;
-  } catch (e) {
-    return null;
-  }
-}
+// Removed duplicate function extractFolderIdFromLink. It is already defined in Utils.gs.

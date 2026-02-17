@@ -147,7 +147,7 @@ function syncSingleProject_(project, runId, settings, options) {
   var effectiveTimestamp = baseTimestamp;
   
   // Determine Mode (Step 2.1 vs 2.2)
-  triggeredBy = options.triggeredBy || 'manual';
+  var triggeredBy = options.triggeredBy || 'manual';
   Logger.log('Starting sync for project: ' + project.name + ', runId: ' + runId + ', triggeredBy: ' + triggeredBy);
   
   if (lastSyncStatus) Logger.log('Last Sync Status: ' + lastSyncStatus);

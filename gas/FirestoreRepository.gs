@@ -75,7 +75,7 @@ function saveProject(project) {
   return project;
 }
 
-function deleteProject(projectId) {
+function deleteProjectDoc(projectId) {
   // Soft delete implementation
   var doc = {
     fields: {
