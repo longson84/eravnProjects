@@ -75,6 +75,7 @@ var ProjectService = {
       filesCount: 0,
       totalSize: 0,
       lastSyncTimestamp: null,
+      lastSuccessSyncTimestamp: null,
       lastSyncStatus: null,
       
       // Timestamps

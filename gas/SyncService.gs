@@ -124,14 +124,17 @@ function syncSingleProject_(project, runId, settings, options) {
   
   // Step 1: Base timestamp & last status từ metadata project (không query sessions)
   var syncStartTime = project.syncStartDate ? new Date(project.syncStartDate).getTime() : 0;
-  var lastSyncTime = project.lastSyncTimestamp ? new Date(project.lastSyncTimestamp).getTime() : 0;
+  var lastSuccessSyncTime = project.lastSuccessSyncTimestamp ? new Date(project.lastSuccessSyncTimestamp).getTime() : 0;
   var lastSyncStatus = project.lastSyncStatus || null;
-  var baseTimestamp = Math.max(lastSyncTime, syncStartTime);
+  
+  // Unified Logic: Always use lastSuccessSyncTimestamp as base for file scanning
+  // If never synced successfully, use syncStartDate
+  var baseTimestamp = Math.max(lastSuccessSyncTime, syncStartTime);
 
   var isContinueMode = false;
   var pendingSessions = [];
   var successFilesMap = {}; // Map<fileName, fileLog>
-  var effectiveTimestamp = 0;
+  var effectiveTimestamp = baseTimestamp;
   
   // Determine Mode (Step 2.1 vs 2.2)
   triggeredBy = options.triggeredBy || 'manual';
@@ -157,32 +160,21 @@ function syncSingleProject_(project, runId, settings, options) {
               // However we assume there are not too many sync sessions to be continued
               for (var j = 0; j < logs.length; j++) {
                   if (logs[j].status === 'success') {
-                      // We map by fileName. Assumption: fileName is unique in the folder structure context?
-                      // Wait, processFiles uses recursive path. Map key should probably include path or just handle flat for now.
-                      // The spec says "check if file is in list".
-                      // Ideally we should key by 'sourcePath' or 'fileName' if flat.
-                      // Let's use fileName for now as per current logic structure, but aware of collision risk in diff folders.
-                      // Better: key by 'sourcePath' if available, or just fileName.
-                      // successFilesMap[logs[j].fileName] = logs[j];
-                      // This is the best one
                       successFilesMap[logs[j].sourcePath] = logs[j];
                   }
               }
           }
           Logger.log('Mapped ' + Object.keys(successFilesMap).length + ' successful files to skip.');
-          
-          // For Continue mode, we always start scanning from baseTimestamp
-          effectiveTimestamp = baseTimestamp;
+          Logger.log('Continue Mode: Using lastSuccessSyncTimestamp (' + new Date(effectiveTimestamp).toISOString() + ') as base.');
       } else {
           // Fallback if no pending found
           isContinueMode = false;
       }
   } 
   
-  if (!isContinueMode) {
-      // Step 2.1: Normal Mode
-      effectiveTimestamp = baseTimestamp;
-  }
+  // Normal Mode also uses effectiveTimestamp = baseTimestamp (which is lastSuccessSyncTime)
+  // This ensures we always scan from the last KNOWN GOOD state.
+
 
   var sinceTimestamp = effectiveTimestamp > 0 ? new Date(effectiveTimestamp).toISOString() : '1970-01-01T00:00:00Z';
 
@@ -391,6 +383,12 @@ function syncSingleProject_(project, runId, settings, options) {
   // Spec: lastSyncTimestamp is session.timestamp (Start Time)
   project.lastSyncTimestamp = session.timestamp; 
   project.lastSyncStatus = session.status;
+  
+  // Update lastSuccessSyncTimestamp only if success
+  if (session.status === 'success') {
+      project.lastSuccessSyncTimestamp = session.timestamp;
+  }
+
   project.filesCount = (project.filesCount || 0) + session.filesCount;
   project.totalSize = (project.totalSize || 0) + session.totalSizeSynced;
   project.updatedAt = getCurrentTimestamp();
