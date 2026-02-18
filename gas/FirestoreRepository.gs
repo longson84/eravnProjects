@@ -416,6 +416,8 @@ function docToProject_(doc) {
     isDeleted: fv_(f.isDeleted) === true || fv_(f.isDeleted) === 'true',
     deletedAt: fv_(f.deletedAt) || null,
     lastSyncTimestamp: fv_(f.lastSyncTimestamp) || null,
+    lastSuccessSyncTimestamp: fv_(f.lastSuccessSyncTimestamp) || null, // Add missing field
+    nextSyncTimestamp: fv_(f.nextSyncTimestamp) || null, // Add missing field
     lastSyncStatus: fv_(f.lastSyncStatus) || null,
     filesCount: Number(fv_(f.filesCount)) || 0,
     totalSize: Number(fv_(f.totalSize)) || 0, // Add new field
@@ -437,6 +439,8 @@ function projectToDoc_(p) {
     isDeleted: { booleanValue: !!p.isDeleted },
     deletedAt: p.deletedAt ? { stringValue: p.deletedAt } : { nullValue: null },
     lastSyncTimestamp: p.lastSyncTimestamp ? { stringValue: p.lastSyncTimestamp } : { nullValue: null },
+    lastSuccessSyncTimestamp: p.lastSuccessSyncTimestamp ? { stringValue: p.lastSuccessSyncTimestamp } : { nullValue: null }, // Add missing field
+    nextSyncTimestamp: p.nextSyncTimestamp ? { stringValue: p.nextSyncTimestamp } : { nullValue: null }, // Add missing field
     lastSyncStatus: p.lastSyncStatus ? { stringValue: p.lastSyncStatus } : { nullValue: null },
     filesCount: { integerValue: String(p.filesCount || 0) },
     totalSize: { integerValue: String(p.totalSize || 0) }, // Add new field

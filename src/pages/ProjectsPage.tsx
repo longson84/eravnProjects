@@ -626,7 +626,7 @@ export function ProjectsPage() {
                                         variant="outline"
                                         size="sm"
                                         onClick={() => handleReset(project.id)}
-                                        title="Reset lịch sử syn"
+                                        title="Reset lịch sử sync"
                                     >
                                         <RotateCcw className="w-3.5 h-3.5" />
                                         Reset
