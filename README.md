@@ -11,7 +11,7 @@
   - Tự động ngắt (Safe Exit) khi hết thời gian chạy cho phép.
   - Hàng đợi (Queue) thông minh ưu tiên dự án lâu chưa sync.
   - Tự động retry khi gặp lỗi Drive API 429.
-- **Giám sát & Logs**:
+- **Giám sát & Logs**:co
   - Lưu lịch sử sync chi tiết từng file vào Firestore.
   - Gửi thông báo báo cáo qua Google Chat Webhook.
   - Giao diện tra cứu log chi tiết.

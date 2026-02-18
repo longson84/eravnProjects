@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Settings, Save, Bell, Clock, Database, RotateCcw, CheckCircle2, AlertTriangle, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, Save, Bell, Clock, Database, RotateCcw, CheckCircle2, AlertTriangle, Trash2, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,17 +10,37 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useAppContext } from '@/context/AppContext';
 import { gasService } from '@/services/gasService';
 import type { AppSettings } from '@/types/types';
+import { useSettings, useUpdateSettings, useResetDatabase } from '@/hooks/useSettings';
 
 export function SettingsPage() {
-    const { state, updateSettings, setTheme } = useAppContext();
-    const [form, setForm] = useState<AppSettings>({ ...state.settings });
+    const { state, setTheme } = useAppContext();
+    const { data: settings, isLoading } = useSettings();
+    const updateSettingsMutation = useUpdateSettings();
+    const resetDatabaseMutation = useResetDatabase();
+
+    const [form, setForm] = useState<AppSettings>({
+        syncCutoffSeconds: 300,
+        defaultScheduleCron: '0 */6 * * *',
+        webhookUrl: '',
+        firebaseProjectId: '',
+        enableNotifications: false,
+        maxRetries: 3,
+        batchSize: 450,
+        enableAutoSchedule: true
+    });
+    
+    useEffect(() => {
+        if (settings) {
+            setForm(settings);
+            setScheduleMinutes(cronToMinutes(settings.defaultScheduleCron));
+        }
+    }, [settings]);
+
     const [saved, setSaved] = useState(false);
-    const [saving, setSaving] = useState(false);
     
     // Reset DB States
     const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
     const [resetConfirmText, setResetConfirmText] = useState('');
-    const [isResetting, setIsResetting] = useState(false);
     const [isTestingWebhook, setIsTestingWebhook] = useState(false);
 
     // Cron Helpers
@@ -45,10 +65,9 @@ export function SettingsPage() {
         return `0 */${hours} * * *`;
     };
 
-    const [scheduleMinutes, setScheduleMinutes] = useState(cronToMinutes(state.settings.defaultScheduleCron));
+    const [scheduleMinutes, setScheduleMinutes] = useState(360);
 
     const handleSave = async () => {
-        setSaving(true);
         try {
             // Validate schedule minutes (min 5)
             let finalMinutes = scheduleMinutes;
@@ -62,33 +81,42 @@ export function SettingsPage() {
                 ...form,
                 defaultScheduleCron: minutesToCron(finalMinutes)
             };
-            await updateSettings(updatedForm);
+            
+            await updateSettingsMutation.mutateAsync(updatedForm);
             setSaved(true);
             setTimeout(() => setSaved(false), 3000);
-        } finally { setSaving(false); }
+        } catch (error) {
+            console.error('Failed to save settings:', error);
+        }
     };
 
-    const handleReset = () => setForm({ ...state.settings });
+    const handleReset = () => {
+        if (settings) {
+            setForm({ ...settings });
+            setScheduleMinutes(cronToMinutes(settings.defaultScheduleCron));
+        }
+    };
 
     const update = (key: keyof AppSettings, value: string | number | boolean) => setForm(prev => ({ ...prev, [key]: value }));
 
     const handleResetDatabase = async () => {
         if (resetConfirmText !== 'I understand') return;
         
-        setIsResetting(true);
         try {
-            await gasService.resetDatabase();
+            await resetDatabaseMutation.mutateAsync();
             setIsResetDialogOpen(false);
             setResetConfirmText('');
-            // Optional: reload page or clear local state if needed
+            // Reload to clear any stale state
             window.location.reload();
         } catch (error) {
             console.error('Reset failed:', error);
             alert('Reset failed. Check console for details.');
-        } finally {
-            setIsResetting(false);
         }
     };
+
+    if (isLoading) {
+        return <div className="flex items-center justify-center h-96"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>;
+    }
 
     return (
         <div className="space-y-6">
@@ -99,8 +127,8 @@ export function SettingsPage() {
                 </div>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={handleReset} className="gap-2"><RotateCcw className="w-4 h-4" />Reset</Button>
-                    <Button onClick={handleSave} disabled={saving} className="gap-2">
-                        {saved ? <><CheckCircle2 className="w-4 h-4" />Đã lưu</> : <><Save className="w-4 h-4" />Lưu cài đặt</>}
+                    <Button onClick={handleSave} disabled={updateSettingsMutation.isPending} className="gap-2">
+                        {saved ? <><CheckCircle2 className="w-4 h-4" />Đã lưu</> : updateSettingsMutation.isPending ? <><Loader2 className="w-4 h-4 animate-spin" />Đang lưu...</> : <><Save className="w-4 h-4" />Lưu cài đặt</>}
                     </Button>
                 </div>
             </div>
@@ -293,13 +321,13 @@ export function SettingsPage() {
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsResetDialogOpen(false)} disabled={isResetting}>Hủy</Button>
+                        <Button variant="outline" onClick={() => setIsResetDialogOpen(false)} disabled={resetDatabaseMutation.isPending}>Hủy</Button>
                         <Button 
                             variant="destructive" 
                             onClick={handleResetDatabase} 
-                            disabled={resetConfirmText !== 'I understand' || isResetting}
+                            disabled={resetConfirmText !== 'I understand' || resetDatabaseMutation.isPending}
                         >
-                            {isResetting ? 'Đang xóa...' : 'Xác nhận xóa'}
+                            {resetDatabaseMutation.isPending ? 'Đang xóa...' : 'Xác nhận xóa'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -138,20 +138,9 @@ export interface DashboardData {
 
 /** App-level state */
 export interface AppState {
-    projects: Project[];
-    settings: AppSettings;
-    isLoading: boolean;
-    error: string | null;
     theme: 'light' | 'dark' | 'system';
 }
 
 /** App-level actions */
 export type AppAction =
-    | { type: 'SET_PROJECTS'; payload: Project[] }
-    | { type: 'ADD_PROJECT'; payload: Project }
-    | { type: 'UPDATE_PROJECT'; payload: Project }
-    | { type: 'DELETE_PROJECT'; payload: string }
-    | { type: 'SET_SETTINGS'; payload: AppSettings }
-    | { type: 'SET_LOADING'; payload: boolean }
-    | { type: 'SET_ERROR'; payload: string | null }
     | { type: 'SET_THEME'; payload: 'light' | 'dark' | 'system' };

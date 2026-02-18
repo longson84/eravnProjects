@@ -55,20 +55,34 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAppContext } from '@/context/AppContext';
-import { gasService } from '@/services/gasService';
 import type { Project } from '@/types/types';
-import { useQueryClient } from '@tanstack/react-query';
+import { 
+    useProjects, 
+    useCreateProject, 
+    useUpdateProject, 
+    useDeleteProject, 
+    useSyncProject, 
+    useSyncAllProjects, 
+    useResetProject 
+} from '@/hooks/useProjects';
+import { useSettings, useUpdateSettings } from '@/hooks/useSettings';
 
 export function ProjectsPage() {
-    const { state, createProject, updateProject, deleteProject, updateSettings } = useAppContext();
-    const queryClient = useQueryClient();
+    const { data: projects = [], isLoading: isProjectsLoading } = useProjects();
+    const { data: settings } = useSettings();
+    
+    const createProjectMutation = useCreateProject();
+    const updateProjectMutation = useUpdateProject();
+    const deleteProjectMutation = useDeleteProject();
+    const syncProjectMutation = useSyncProject();
+    const syncAllMutation = useSyncAllProjects();
+    const resetProjectMutation = useResetProject();
+    const updateSettingsMutation = useUpdateSettings();
+
     const [search, setSearch] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [editingProject, setEditingProject] = useState<Project | null>(null);
     const [syncingId, setSyncingId] = useState<string | null>(null);
-    const [isSyncAllRunning, setIsSyncAllRunning] = useState(false);
     
     // View mode state
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
@@ -99,9 +113,9 @@ export function ProjectsPage() {
         );
         if (!confirmed) return;
 
-        if (state.settings.enableAutoSchedule) {
+        if (settings?.enableAutoSchedule) {
             try {
-                await updateSettings({ ...state.settings, enableAutoSchedule: false });
+                await updateSettingsMutation.mutateAsync({ ...settings, enableAutoSchedule: false });
             } catch (error) {
                 console.error("Failed to disable auto schedule:", error);
             }
@@ -125,7 +139,7 @@ export function ProjectsPage() {
         syncStartDate: new Date().toISOString().split('T')[0], // Default to today YYYY-MM-DD
     });
 
-    const filteredProjects = state.projects.filter(
+    const filteredProjects = projects.filter(
         (p) =>
             !p.isDeleted &&
             (p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -173,7 +187,6 @@ export function ProjectsPage() {
         if (!formData.name || !formData.sourceFolderLink || !formData.destFolderLink) return;
         if (!validateFolderLink(formData.sourceFolderLink) || !validateFolderLink(formData.destFolderLink)) return;
 
-        setIsSubmitting(true);
         try {
             const projectData: Partial<Project> = {
                 name: formData.name,
@@ -187,9 +200,9 @@ export function ProjectsPage() {
             };
 
             if (editingProject) {
-                await updateProject({ ...editingProject, ...projectData });
+                await updateProjectMutation.mutateAsync({ ...editingProject, ...projectData });
             } else {
-                await createProject(projectData);
+                await createProjectMutation.mutateAsync(projectData);
             }
 
             setIsCreateOpen(false);
@@ -197,23 +210,19 @@ export function ProjectsPage() {
         } catch (error) {
             console.error('Failed to save project:', error);
             // Optional: Show error toast here if needed
-        } finally {
-            setIsSubmitting(false);
         }
     };
 
     const handleDelete = async (id: string) => {
         if (confirm('Bạn có chắc chắn muốn xóa dự án này?')) {
-            await deleteProject(id);
+            await deleteProjectMutation.mutateAsync(id);
         }
     };
 
     const handleReset = async (projectId: string) => {
         if (confirm('Thao tác này sẽ reset lịch sử sync của dự án')) {
             try {
-                await gasService.resetProject(projectId);
-                queryClient.invalidateQueries({ queryKey: ['projects'] });
-                queryClient.invalidateQueries({ queryKey: ['syncLogs'] });
+                await resetProjectMutation.mutateAsync(projectId);
             } catch (error) {
                 console.error('Failed to reset project:', error);
                 alert('Reset dự án thất bại: ' + (error as Error).message);
@@ -233,9 +242,7 @@ export function ProjectsPage() {
     const handleSync = async (projectId: string) => {
         setSyncingId(projectId);
         try {
-            const result = await gasService.runSyncProject(projectId);
-            queryClient.invalidateQueries({ queryKey: ['projects'] });
-            queryClient.invalidateQueries({ queryKey: ['syncLogs'] });
+            const result = await syncProjectMutation.mutateAsync(projectId);
             
             setSyncResult({
                 open: true,
@@ -255,11 +262,8 @@ export function ProjectsPage() {
     };
 
     const handleSyncAll = async () => {
-        setIsSyncAllRunning(true);
         try {
-            const result = await gasService.runSyncAll();
-            queryClient.invalidateQueries({ queryKey: ['projects'] });
-            queryClient.invalidateQueries({ queryKey: ['syncLogs'] });
+            const result = await syncAllMutation.mutateAsync();
 
             setSyncResult({
                 open: true,
@@ -272,14 +276,12 @@ export function ProjectsPage() {
                 success: false,
                 message: 'Sync All failed: ' + (e as Error).message
             });
-        } finally {
-            setIsSyncAllRunning(false);
         }
     };
 
     const handleToggleStatus = async (project: Project) => {
         const newStatus = project.status === 'active' ? 'paused' : 'active';
-        await updateProject({ ...project, status: newStatus });
+        await updateProjectMutation.mutateAsync({ ...project, status: newStatus });
     };
 
     const formatDate = (dateStr: string | null) => {
@@ -347,10 +349,10 @@ export function ProjectsPage() {
                         variant="outline"
                         className="gap-2"
                         onClick={() => handleManualSyncConfirmation(handleSyncAll)}
-                        disabled={isSyncAllRunning || state.isLoading || filteredProjects.length === 0}
+                        disabled={syncAllMutation.isPending || isProjectsLoading || filteredProjects.length === 0}
                         title="Chạy Sync All cho tất cả dự án (manual)"
                     >
-                        {isSyncAllRunning ? (
+                        {syncAllMutation.isPending ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                             <RefreshCw className="w-4 h-4" />
@@ -459,14 +461,14 @@ export function ProjectsPage() {
                                 </div>
                             </div>
                             <DialogFooter>
-                                <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }} disabled={isSubmitting}>
+                                <Button variant="outline" onClick={() => { setIsCreateOpen(false); resetForm(); }} disabled={createProjectMutation.isPending || updateProjectMutation.isPending}>
                                     Hủy
                                 </Button>
                                 <Button
                                     onClick={handleSubmit}
-                                    disabled={!formData.name || !formData.sourceFolderLink || !formData.destFolderLink || isSubmitting}
+                                    disabled={!formData.name || !formData.sourceFolderLink || !formData.destFolderLink || createProjectMutation.isPending || updateProjectMutation.isPending}
                                 >
-                                    {isSubmitting ? (
+                                    {createProjectMutation.isPending || updateProjectMutation.isPending ? (
                                         <>
                                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
                                             Đang xử lý...
@@ -493,7 +495,7 @@ export function ProjectsPage() {
             </div>
 
             {/* Content */}
-            {state.isLoading ? (
+            {isProjectsLoading ? (
                 <div className="flex items-center justify-center py-12">
                     <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
                 </div>

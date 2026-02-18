@@ -117,6 +117,7 @@ function updateSettings(settingsData) {
 // Logs API
 // ==========================================
 
+/*
 function getSyncSessions(limit) {
   return getRecentSyncSessions(limit);
 }
@@ -128,6 +129,7 @@ function getSessionsByProject(projectId) {
 function getFileLogs(sessionId) {
   return getFileLogsBySession(sessionId);
 }
+*/
 
 // ==========================================
 // Heartbeat API
