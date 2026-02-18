@@ -47,6 +47,10 @@ function deleteProject(projectId) {
   return ProjectService.deleteProject(projectId);
 }
 
+function resetProject(projectId) {
+  return ProjectService.resetProject(projectId);
+}
+
 // ==========================================
 // Sync API
 // ==========================================
