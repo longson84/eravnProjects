@@ -578,11 +578,34 @@ export function ProjectsPage() {
                                     </div>
                                     <div className="flex items-center justify-between pt-2 border-t mt-1">
                                         <div className="flex items-center gap-1">
-                                            <Clock className="w-3.5 h-3.5" />
-                                            <span>Sync lần cuối:</span>
+                                            <span>Lần sync gần nhất:</span>
                                         </div>
                                         <span>{formatDate(project.lastSyncTimestamp)}</span>
                                     </div>
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground">Kết quả lần sync gần nhất:</span>
+                                        <span className={`font-medium ${
+                                            project.lastSyncStatus === 'success' ? 'text-green-600' : 
+                                            project.lastSyncStatus === 'error' ? 'text-destructive' : 
+                                            project.lastSyncStatus === 'interrupted' ? 'text-orange-500' : ''
+                                        }`}>
+                                            {
+                                                project.lastSyncStatus === 'success' ? 'Thành công' :
+                                                project.lastSyncStatus === 'error' ? 'Lỗi' :
+                                                project.lastSyncStatus === 'interrupted' ? 'Gián đoạn' : 
+                                                project.lastSyncStatus || '-'
+                                            }
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground">Lần sync thành công gần nhất:</span>
+                                        <span>{formatDate(project.lastSuccessSyncTimestamp || null)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs">
+                                        <span className="text-muted-foreground">Lần sync tiếp theo sẽ từ:</span>
+                                        <span>{formatDate(project.nextSyncTimestamp || null)}</span>
+                                    </div>
+                                    
                                 </div>
 
                                 {/* Actions */}
@@ -651,11 +674,14 @@ export function ProjectsPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[300px]">Dự án</TableHead>
-                                <TableHead className="w-[120px]">Trạng thái</TableHead>
                                 <TableHead>Source / Destination</TableHead>
                                 <TableHead className="w-[130px]">Sync từ</TableHead>
                                 <TableHead className="w-[120px]">Hôm nay</TableHead>
                                 <TableHead className="w-[120px]">7 ngày</TableHead>
+                                <TableHead className="w-[150px]">Sync gần nhất</TableHead>
+                                <TableHead className="w-[120px]">Kết quả</TableHead>
+                                <TableHead className="w-[150px]">Thành công gần nhất</TableHead>
+                                <TableHead className="w-[150px]">Sync tiếp theo</TableHead>
                                 <TableHead className="w-[100px] text-right">Thao tác</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -665,7 +691,6 @@ export function ProjectsPage() {
                                     <TableCell>
                                         <div className="font-medium">{project.name}</div>
                                     </TableCell>
-                                    <TableCell>{getStatusBadge(project.status)}</TableCell>
                                     <TableCell>
                                         <div className="flex flex-col gap-1 text-xs max-w-[200px]">
                                             <a href={project.sourceFolderLink} target="_blank" className="flex items-center gap-1 text-muted-foreground hover:text-primary truncate">
@@ -693,6 +718,29 @@ export function ProjectsPage() {
                                     </TableCell>
                                     <TableCell className="text-xs">
                                         {project.stats?.last7DaysFiles || 0} files
+                                    </TableCell>
+                                    <TableCell className="text-xs whitespace-nowrap">
+                                        {formatDate(project.lastSyncTimestamp)}
+                                    </TableCell>
+                                    <TableCell className="text-xs whitespace-nowrap">
+                                        <span className={`font-medium ${
+                                            project.lastSyncStatus === 'success' ? 'text-green-600' : 
+                                            project.lastSyncStatus === 'error' ? 'text-destructive' : 
+                                            project.lastSyncStatus === 'interrupted' ? 'text-orange-500' : ''
+                                        }`}>
+                                            {
+                                                project.lastSyncStatus === 'success' ? 'Thành công' :
+                                                project.lastSyncStatus === 'error' ? 'Lỗi' :
+                                                project.lastSyncStatus === 'interrupted' ? 'Gián đoạn' : 
+                                                project.lastSyncStatus || '-'
+                                            }
+                                        </span>
+                                    </TableCell>
+                                    <TableCell className="text-xs whitespace-nowrap">
+                                        {formatDate(project.lastSuccessSyncTimestamp || null)}
+                                    </TableCell>
+                                    <TableCell className="text-xs whitespace-nowrap">
+                                        {formatDate(project.nextSyncTimestamp || null)}
                                     </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">

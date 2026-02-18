@@ -13,6 +13,8 @@ export interface Project {
     destFolderLink: string;
     status: 'active' | 'paused' | 'error';
     lastSyncTimestamp: string | null;
+    lastSuccessSyncTimestamp?: string | null;
+    nextSyncTimestamp?: string | null;
     lastSyncStatus: 'success' | 'interrupted' | 'error' | 'pending' | null;
     filesCount: number;
     totalSize: number; // Total size of all files synced for this project
