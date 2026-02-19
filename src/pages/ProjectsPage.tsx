@@ -15,7 +15,6 @@ import {
     Trash2,
     RefreshCw,
     RotateCcw,
-    Clock,
     AlertCircle,
     CheckCircle2,
     XCircle,
@@ -674,13 +673,13 @@ export function ProjectsPage() {
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[300px]">Dự án</TableHead>
-                                <TableHead>Source / Destination</TableHead>
+                                {/* <TableHead>Source / Destination</TableHead> */}
                                 <TableHead className="w-[130px]">Sync từ</TableHead>
                                 <TableHead className="w-[120px]">Hôm nay</TableHead>
                                 <TableHead className="w-[120px]">7 ngày</TableHead>
                                 <TableHead className="w-[150px]">Sync gần nhất</TableHead>
                                 <TableHead className="w-[120px]">Kết quả</TableHead>
-                                <TableHead className="w-[150px]">Thành công gần nhất</TableHead>
+                                <TableHead className="w-[200px]">Thành công gần nhất</TableHead>
                                 <TableHead className="w-[150px]">Sync tiếp theo</TableHead>
                                 <TableHead className="w-[100px] text-right">Thao tác</TableHead>
                             </TableRow>
@@ -691,7 +690,7 @@ export function ProjectsPage() {
                                     <TableCell>
                                         <div className="font-medium">{project.name}</div>
                                     </TableCell>
-                                    <TableCell>
+                                    {/* <TableCell>
                                         <div className="flex flex-col gap-1 text-xs max-w-[200px]">
                                             <a href={project.sourceFolderLink} target="_blank" className="flex items-center gap-1 text-muted-foreground hover:text-primary truncate">
                                                 <span className="font-semibold">Nguồn:</span> {project.sourceFolderId}
@@ -702,7 +701,7 @@ export function ProjectsPage() {
                                                 <ExternalLink className="w-3 h-3" />
                                             </a>
                                         </div>
-                                    </TableCell>
+                                    </TableCell> */}
                                     <TableCell>
                                         {project.syncStartDate ? (
                                             <div className="text-xs text-muted-foreground flex items-center gap-1">

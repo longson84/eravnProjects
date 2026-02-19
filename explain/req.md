@@ -1,5 +1,8 @@
-
-
+---
+Date: 2026-02-10
+Projects:
+  - Build
+---
 
 ## 1. BỐI CẢNH & MỤC TIÊU
 
@@ -55,6 +58,23 @@ Mặc dù môi trường GAS là các tệp phẳng, code phải được tổ c
 
 ## 4. CƠ CHẾ & THUẬT TOÁN SYNC
 
+### 4.0. Các thuộc tính của một dự án
+
+Các thuộc tính người dùng thiết lập
+
+- name: tên dự án, như hiện tại
+- description: mô tả: như hiện tại
+- status: trạng thái active hay không, như hiện tại
+- syncStartDate: ngày bắt đầu đồng bộ, như hiện tại
+- sourceFolderId và sourceFolderLink: link và Id của folder gốc, như hiện tại
+- destFolderId và destFolderLink: link và Id của folder đích, như hiện tại
+
+Những thuộc tính do hệ thống cập nhật như metadata trong quá trình sync
+
+- isDeleted và deletedAt: như hiện tại
+- createdAt và updatedAt: như hiện tại
+- lastSyncTimestamp, lastSyncStatus: như hiện tại
+
 ### 4.1 Cơ chế ngừng tự động
 
 Trong Settings, chúng ta setup thời gian run tối đa của một sync run. Nếu một sync run đi hết thời gian này, nó tự động ngắt.
@@ -96,6 +116,7 @@ Một sync session sẽ có những thuộc tính sau, chúng ta sẽ cần ghi 
 - status: chúng ta cần có success, interrupted, và error (hoặc có một phần nhẹ hơn là warning như hiện tại)
 - current: là status cập nhật cho hiện tại, current luôn bằng status lúc đầu. Nếu status (kết quả của lần chạy đầu tiên là interrupted hoặc error) thì theo thiết kế dưới đây, sync session này sẽ được cập nhật tiếp ở những lần sau. Chúng ta sẽ giữ status như ban đầu để biết rằng lúc đầu nó chạy bị error hoặc interrupted, nhưng current sẽ thay đổi.
 - retryID: phần này chúng ta sẽ cần implement lại, đổi tên thành continueId
+- lastSuccessSyncTimestamp: timestamp của sync session thành công gần nhất
 
 success là khi sync session của dự án chạy hoàn tất và không có file nào bị lỗi
 interrupted là khi sync session của dự án không bị lỗi nhưng được safe exit do time-out
@@ -107,11 +128,11 @@ Nếu người dùng bấm sync all, hoặc tác vụ sync all được tự đ�
 Dưới đây, chúng ta mô tả các bước sync một dự án
 #### Bước 1: Tìm sync session gần nhất của dự án này và kiểm tra status của nó.
 
-Tùy theo status của sync session cuối của dự án, chúng ta sẽ có cách xử lý khác nhau
+Thông tin sync session lần cuối, bao gồm timestamp và status của nó, có sẵn trong metadata của dự án, không cần query lại lịch sử. Tùy theo status của sync session cuối của dự án, chúng ta sẽ có cách xử lý khác nhau
 #### Bước 2.1 Sync session cuối có status là success hoặc warning
 
 Nếu là success thì chúng ta bắt đầu một sync session mới cho dự án này
-- Lấy timestamp của sync session cuối
+- Lấy timestamp của lần sync session thành công cuối từ metadata của dự án (lastSuccessSyncTimestamp)
 - Kiểm tra các file mới trong folder gốc đáp ứng tiêu chí query: `(modifiedTime > max(timestamp, syncStartDate) OR createdTime > max(timestamp, syncStartDate) AND 'source_id' in parents`.
 - copy sang folder đích
 - **Recursive Scan:** Duyệt từng tầng thư mục. Nếu thư mục con có file thay đổi, hệ thống tạo thư mục tương ứng tại Đích trước khi copy.
@@ -120,13 +141,12 @@ Nếu là success thì chúng ta bắt đầu một sync session mới cho dự 
 #### Bước 2.2 Sync session cuối có status là error, interrupted
 
 Trong trường hợp này, sync session hiện tại cần phải là tiếp nối của những sync session bị lỗi hoặc bị ngắt.
-Có nghĩa là chúng ta phải bắt đầu từ timestamp của một sync session nào đó trước đó bị lỗi hoặc bị ngắt, coi như chúng ta bắt đầu lại sync session đó.
 
 Rất có thể, trước đó đã có vài sync session cho dự án này bị error hoặc interrupted.
 
 - Đầu tiên, chúng ta sẽ tìm tất cả những sync session bị error hoặc interrupted trước đó mà current status của nó vẫn chưa là success (gọi là nhóm sync sessions cần hoàn tất)
 - Lấy danh sách gồm những files đã sync thành công từ những sync sessions này. Chúng ta cần lấy thông tin, tên file, modifiedDate, createdDate và những thông tin khác có trong document của fileLogs hiện tại
-- Lấy mốc thời gian của lần sync gần nhất là timestamp của sync session gần nhất trong nhóm cần hoàn tất
+- Lấy timestamp của lần sync session thành công cuối từ metadata của dự án (lastSuccessSyncTimestamp)
 - Kiểm tra những files trong folder gốc, mà có `modifiedDate > max(timestamp, syncStartDate) OR  createdDate > max(timestamp, syncStartDate)`
 - Kiểm tra xem file này có trong danh sách những files đã sync thành công hay không
 - Nếu không có, thì copy file mới này
@@ -143,7 +163,7 @@ Sau mỗi sync session, chúng ta cần cập nhật meta data của dự án.
 
 Như hiện tại là OK, chỉ có duy nhất cái lastSyncTimestamp phải lấy cái timestamp của sync session, không phải như hiện tại là thời điểm kết thúc tác vụ sync.
 
-### 4.7. Cơ chế Retry
+### 4.7. Cơ chế Continue
 
 Cơ chế retry hiện tại chúng ta sẽ thay đổi tên cho đúng bản chất và mở rộng một chút về cơ chế
 
@@ -179,6 +199,23 @@ Trong phần settings chúng ta đã có thời gian định kỳ.
 Cái này bằng phút, mà hãy ép buộc nó phải ít nhất là 5 phút
 
 Định kỳ này, chúng ta sẽ chạy sync all theo cơ chế được mô tả ở phần trước
+
+### 4.11. Sync All vs. Scheduled Sync
+
+Trong settings, chúng ta có thiết lập lịch định kỳ chạy sync tất cả các dự án. Đồng thời chúng ta cũng có một thiết lập, có enable việc sync định kỳ hay không.
+
+Tuy nhiên, việc Sync All cũng có thể được bắt đầu từ chính user. Ở màn hình các dự án, user có thể nhấn nút Sync All để chạy sync tất cả các dự án.
+
+Để đảm bảo không bị conflict giữa sync định kỳ và sync từ user, bất kể khi user bấm Sync All, hoặc Sync một dự án, thì việc settings sync định kỳ phải được disable. 
+
+Khi user bấm nút sync một dự án hoặc Sync All, hệ thống phải bật lên cửa sổ thông báo "Khi chủ động sync ở đây, lịch sync định kỳ sẽ tắt. Nếu bạn muốn bật lại sync định kỳ, hãy bật lại trong Settings. Nhấn OK để tiếp tục"
+
+User có thể bấm OK để tiếp tục sync hoặc Cancel để hủy việc sync.
+
+Nếu user bấm OK
+
+- Đầu tiên, tắt option sync định kỳ (và do đó, sẽ là xóa các trigger)
+- Tiến hành tác vụ sync theo dự án hoặc sync all
 
 
 ## 5. Những cơ chế theo dõi
@@ -231,6 +268,7 @@ Lưu vết khi có sự thay đổi thực tế: `id`, `project_id`, `run_id`, `
 
 - **Code Style:** Đặt tên biến/hàm theo kiểu camelCase, có comment giải thích cho các logic phức tạp.
 - **Documentation:** Luôn cập nhật SSoT (Single Source of Truth) này khi có thay đổi về logic.
+
 ## 7. BÁO CÁO & THÔNG BÁO
 
 - **Webhook Integration:** Gửi thông báo JSON tới Google Chat Webhook.
@@ -267,9 +305,8 @@ Card này thể hiện từng dòng, mỗi dòng là một dự án được đ�
 Lưu ý rằng, một phiên đồng bộ có thể sync nhiều dự án. Chúng ta biểu diễn một dự án một dòng.
 ## 9. Sync Logs
 
-Chi tiết [Cơ chế Log theo File & Retry](./synclog_by_files.md)
 Giao diện này thể hiện danh sách các dự án được sync.
-Lưu ý rằng, một sync run sẽ có thể cover nhiều dự án. Nhưng khi thể hiện, chúng ta thể hiện theo các dự án (sync session)
+Lưu ý rằng, một sync session sẽ có thể cover nhiều dự án. Nhưng khi thể hiện, chúng ta thể hiện theo các dự án
 
 Chúng ta sắp xếp theo thời gian chạy, cái gần nhất để trên cùng
 
@@ -283,14 +320,12 @@ Bảng log sẽ gồm 2 phần (như hiện tại đang implement): phần trên
 
 - Tên dự án
 - Run ID - đây chính là sync session
-- **Retry ID** - (Mới) ID của phiên chạy retry nếu phiên này đã được retry.
 - Thời gian chạy
 - **Files Synced** - (Cập nhật) Số file sync thành công.
 - **Errors** - (Mới) Số file sync thất bại.
 - Dung lượng được copy
 - Tổng thời gian
 - Trạng thái
-- Button Retry (nếu như trạng thái là Lỗi và chưa được retry)
 
 Khi chúng ta bấm vào mỗi dự án, ở bảng bên dưới sẽ thể hiện chi tiết từng file được sync của dự án đó, trong session đó với các thông tin sau
 
@@ -300,19 +335,10 @@ Khi chúng ta bấm vào mỗi dự án, ở bảng bên dưới sẽ thể hi�
 - Trạng thái (Success/Error)
 
 
-## 10. Sync All vs. Scheduled Sync
+## 10. TO-DO
 
-Trong settings, chúng ta có thiết lập lịch định kỳ chạy sync tất cả các dự án. Đồng thời chúng ta cũng có một thiết lập, có enable việc sync định kỳ hay không.
+// TODO
 
-Tuy nhiên, việc Sync All cũng có thể được bắt đầu từ chính user. Ở màn hình các dự án, user có thể nhấn nút Sync All để chạy sync tất cả các dự án.
+Xem xét lại vấn đề heartbeat của project khi lưu vào PropertiesService
+Chuẩn hóa thông báo notification vào Webhook
 
-Để đảm bảo không bị conflict giữa sync định kỳ và sync từ user, bất kể khi user bấm Sync All, hoặc Sync một dự án, thì việc settings sync định kỳ phải được disable. 
-
-Khi user bấm nút sync một dự án hoặc Sync All, hệ thống phải bật lên cửa sổ thông báo "Khi chủ động sync ở đây, lịch sync định kỳ sẽ tắt. Nếu bạn muốn bật lại sync định kỳ, hãy bật lại trong Settings. Nhấn OK để tiếp tục"
-
-User có thể bấm OK để tiếp tục sync hoặc Cancel để hủy việc sync.
-
-Nếu user bấm OK
-
-- Đầu tiên, tắt option sync định kỳ (và do đó, sẽ là xóa các trigger)
-- Tiến hành tác vụ sync theo dự án hoặc sync all
